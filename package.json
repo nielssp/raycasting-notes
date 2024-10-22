@@ -1,0 +1,19 @@
+{
+  "name": "raycasting",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "watch": "vite build --watch",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+  },
+  "devDependencies": {
+    "typescript": "^5.2.2",
+    "vite": "^5.2.10",
+    "vite-plugin-checker": "^0.6.4"
+  }
+}
