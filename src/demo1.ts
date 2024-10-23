@@ -250,7 +250,15 @@ export function renderEnv(
     aspectRatio: number,
     playerPos: Vec2,
     playerDir: Vec2,
-    renderWall: (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, x: number, perpWallDist: number, side: number) => void,
+    renderWall: (
+        canvas: HTMLCanvasElement,
+        ctx: CanvasRenderingContext2D,
+        x: number,
+        perpWallDist: number,
+        side: number,
+        rayDir: Vec2,
+        cell: Cell,
+    ) => void,
 ) {
     const sideDist = {x: 0, y: 0};
     let perpWallDist = 0;
@@ -299,7 +307,7 @@ export function renderEnv(
             }
             const cell = map[mapPos.y][mapPos.x];
             if (cell.solid) {
-                renderWall(canvas, ctx, x, perpWallDist, side);
+                renderWall(canvas, ctx, x, perpWallDist, side, rayDir, cell);
                 break;
             }
         }

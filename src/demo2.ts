@@ -1,4 +1,4 @@
-import { PlayerInputs, attachKeyboard, attachMouse, attachTouch, renderBackground, renderEnv, updatePosition } from './demo1';
+import { PlayerInputs, attachKeyboard, attachMouse, attachTouch, renderEnv, updatePosition } from './demo1';
 import { Vec2, attachRenderFunction, initCanvas } from './util';
 
 export function initDemo2() {
@@ -14,14 +14,33 @@ export function initDemo2() {
 
     const [canvas, ctx] = initCanvas('canvas2');
     const aspectRatio = canvas.width / canvas.height;
+    const sky = createSky(canvas, ctx);
     const repaint = attachRenderFunction(canvas, dt => {
         updatePosition(dt, playerInputs, playerPos, playerDir);
-        renderBackground(canvas, ctx);
+        renderBackground(canvas, ctx, sky);
         renderEnv(canvas, ctx, aspectRatio, playerPos, playerDir, renderWall);
     });
     attachKeyboard(canvas, playerInputs);
     attachMouse(canvas, repaint, playerPos, playerDir);
     attachTouch(canvas, repaint, playerPos, playerDir);
+}
+
+export function createSky(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) {
+    const sky = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    sky.addColorStop(0, '#333');
+    sky.addColorStop(0.5, '#111');
+    sky.addColorStop(0.5, '#222');
+    sky.addColorStop(1, '#666');
+    return sky;
+}
+
+export function renderBackground(
+    canvas: HTMLCanvasElement,
+    ctx: CanvasRenderingContext2D,
+    sky: CanvasGradient,
+) {
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 }
 
 export function renderWall(
