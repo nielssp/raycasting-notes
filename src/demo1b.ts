@@ -143,7 +143,7 @@ export async function renderEnv(
             ctx.lineTo(next.x, next.y);
             ctx.stroke();
             previous = next;
-            await sleep(500);
+            await sleep(50);
             const cell = map[mapPos.y][mapPos.x];
             if (cell.solid) {
                 ctx.fillStyle = '#F00';
@@ -157,6 +157,17 @@ export async function renderEnv(
                 );
                 ctx.fill();
                 break;
+            } else {
+                ctx.fillStyle = '#0F0';
+                ctx.beginPath();
+                ctx.arc(
+                    next.x,
+                    next.y,
+                    3,
+                    0,
+                    Math.PI * 2,
+                );
+                ctx.fill();
             }
         }
     }

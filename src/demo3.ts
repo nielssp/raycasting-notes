@@ -2,7 +2,7 @@ import { PlayerInputs, attachKeyboard, attachMouse, attachTouch, renderEnv, upda
 import { createSky, renderBackground } from './demo2';
 import { Vec2, attachRenderFunction, initCanvas } from './util';
 
-const textureSize = {x: 64, y: 64};
+export const textureSize = {x: 64, y: 64};
 
 export async function initDemo3() {
     const playerPos: Vec2 = {x: 2, y: 3};
