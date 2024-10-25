@@ -27,6 +27,9 @@ export function initDemo1b() {
 
     const canvas = document.getElementById('canvas1b') as HTMLCanvasElement;
 
+    if (canvas.parentElement) {
+        canvas.width = canvas.parentElement.clientWidth;
+    }
     const cellSize = canvas.width / mapSize.x;
     canvas.height = mapSize.y * cellSize;
 

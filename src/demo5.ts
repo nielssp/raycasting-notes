@@ -15,7 +15,7 @@ export async function initDemo5() {
     };
 
     const wallTexture: ImageData = await loadTextureData('/assets/content/misc/textures/wall2.png');
-    const floorTexture: ImageData = await loadTextureData('/assets/content/misc/textures/floor2.png');
+    const floorTexture: ImageData = await loadTextureData('/assets/content/misc/textures/floor.png');
 
     const [canvas, ctx] = initCanvas('canvas5');
     const aspectRatio = canvas.width / canvas.height;
@@ -102,43 +102,23 @@ export function renderEnv(
             }
             wallX -= wallX | 0;
             let floorXWall: number, floorYWall: number;
-            if (side == 0 && rayDir.x > 0) {
+            if (side === 0 && rayDir.x > 0) {
                 floorXWall = mapPos.x;
                 floorYWall = mapPos.y + wallX;
-            }
-            else if (side == 0 && rayDir.x < 0) {
-                floorXWall = mapPos.x + 1.0;
+            } else if (side === 0 && rayDir.x < 0) {
+                floorXWall = mapPos.x + 1;
                 floorYWall = mapPos.y + wallX;
-            }
-            else if (side == 1 && rayDir.y > 0) {
+            } else if (side === 1 && rayDir.y > 0) {
                 floorXWall = mapPos.x + wallX;
                 floorYWall = mapPos.y;
-            }
-            else {
+            } else {
                 floorXWall = mapPos.x + wallX;
-                floorYWall = mapPos.y + 1.0;
+                floorYWall = mapPos.y + 1;
             }
-            let zFactor = 1;
-            while (yFloor < floorCellY && yFloor < yFloorMax) {
-                const rowDistance = canvas.height * zFactor / (canvas.height - 2 * yFloor);
-                const weight = rowDistance / perpWallDist;
-                const floorX = weight * floorXWall + (1 - weight) * playerPos.x;
-                const floorY = weight * floorYWall + (1 - weight) * playerPos.y;
-                let tx = ((textureSize.x * floorX) | 0) & (textureSize.x - 1);
-                let ty = ((textureSize.y * floorY) | 0) & (textureSize.y - 1);
-                const texOffset = (ty * textureSize.x + tx) * 4;
-                const brightness = 1 - Math.min(0.8, Math.max(0, rowDistance / 10));
-                const y = (canvas.height - yFloor - 1);
-                const offset = y * 4;
-                stripe.data[offset] = floorTexture.data[texOffset] * brightness;
-                stripe.data[offset + 1] = floorTexture.data[texOffset + 1] * brightness;
-                stripe.data[offset + 2] = floorTexture.data[texOffset + 2] * brightness;
-                stripe.data[offset + 3] = 255;
-                yFloor++;
-            }
+            yFloor = renderFloor(canvas, stripe, playerPos, floorXWall, floorYWall, yFloor, yFloorMax, floorCellY, perpWallDist, floorTexture);
 
             if (cell.solid) {
-                renderWall(canvas, stripe, x, perpWallDist, side, rayDir, wallTexture, playerPos);
+                renderWall(canvas, stripe, wallHeight, wallX, wallY, perpWallDist, side, rayDir, wallTexture);
                 break;
             }
         }
@@ -146,28 +126,51 @@ export function renderEnv(
     }
 }
 
+export function renderFloor(
+    canvas: HTMLCanvasElement,
+    stripe: ImageData,
+    playerPos: Vec2,
+    floorXWall: number,
+    floorYWall: number,
+    yFloor: number,
+    yFloorMax: number,
+    floorCellY: number,
+    perpWallDist: number,
+    floorTexture: ImageData,
+): number {
+    while (yFloor < floorCellY && yFloor < yFloorMax) {
+        const rowDistance = canvas.height / (canvas.height - 2 * yFloor);
+        const weight = rowDistance / perpWallDist;
+        const floorX = weight * floorXWall + (1 - weight) * playerPos.x;
+        const floorY = weight * floorYWall + (1 - weight) * playerPos.y;
+        let tx = ((textureSize.x * floorX) | 0) & (textureSize.x - 1);
+        let ty = ((textureSize.y * floorY) | 0) & (textureSize.y - 1);
+        const texOffset = (ty * textureSize.x + tx) * 4;
+        const brightness = 1 - Math.min(0.8, Math.max(0, rowDistance / 10));
+        const y = (canvas.height - yFloor - 1);
+        const offset = y * 4;
+        stripe.data[offset] = floorTexture.data[texOffset] * brightness;
+        stripe.data[offset + 1] = floorTexture.data[texOffset + 1] * brightness;
+        stripe.data[offset + 2] = floorTexture.data[texOffset + 2] * brightness;
+        stripe.data[offset + 3] = 255;
+        yFloor++;
+    }
+    return yFloor;
+}
+
 export function renderWall(
     canvas: HTMLCanvasElement,
     stripe: ImageData,
-    x: number,
+    wallHeight: number,
+    wallX: number,
+    wallY: number,
     perpWallDist: number,
     side: number,
     rayDir: Vec2,
     wallTexture: ImageData,
-    playerPos: Vec2,
 ) {
-    const wallHeight = Math.ceil(canvas.height / perpWallDist);
-    const wallY = Math.floor((canvas.height - wallHeight) / 2);
 
     const brightness = 1 - Math.min(0.8, Math.max(0, (perpWallDist - side) / 10));
-
-    let wallX: number;
-    if (side === 0) {
-        wallX = playerPos.y + perpWallDist * rayDir.y;
-    } else {
-        wallX = playerPos.x + perpWallDist * rayDir.x;
-    }
-    wallX -= wallX | 0;
 
     let texX: number = wallX * textureSize.x | 0;
     if (side === 0 && rayDir.x > 0) {
@@ -177,7 +180,7 @@ export function renderWall(
         texX = textureSize.x - texX - 1;
     }
     const yStart = Math.max(wallY, 0);
-    const yEnd = Math.min(wallY + wallHeight + 1, canvas.height);
+    const yEnd = Math.min(wallY + wallHeight, canvas.height);
 
     const step = textureSize.y * perpWallDist / canvas.height;
     let texPos = wallY < yStart ? (yStart - wallY) * step : 0;

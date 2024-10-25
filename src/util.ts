@@ -42,8 +42,11 @@ export function initCanvas(id: string): [HTMLCanvasElement, CanvasRenderingConte
     canvas.height = 200;
 
     canvas.style.imageRendering = 'pixelated';
-    canvas.style.width = `${canvas.width / devicePixelRatio * 2}px`;
-    canvas.style.height = `${canvas.height / devicePixelRatio * 2}px`;
+    if (canvas.parentElement) {
+        const sizeMultiplier = Math.floor(canvas.parentElement.clientWidth * devicePixelRatio / canvas.width)
+        canvas.style.width = `${canvas.width / devicePixelRatio * sizeMultiplier}px`;
+        canvas.style.height = `${canvas.height / devicePixelRatio * sizeMultiplier}px`;
+    }
 
     const ctx = canvas.getContext('2d')!;
     ctx.imageSmoothingEnabled = false;

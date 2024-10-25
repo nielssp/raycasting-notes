@@ -79,7 +79,7 @@ export function renderWall(
         texX = textureSize.x - texX - 1;
     }
     const yStart = Math.max(wallY, 0);
-    const yEnd = Math.min(wallY + wallHeight + 1, canvas.height);
+    const yEnd = Math.min(wallY + wallHeight, canvas.height);
 
     const step = textureSize.y * perpWallDist / canvas.height;
     let texPos = wallY < yStart ? (yStart - wallY) * step : 0;
