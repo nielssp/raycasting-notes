@@ -28,7 +28,9 @@ export function initDemo1b() {
     const canvas = document.getElementById('canvas1b') as HTMLCanvasElement;
 
     if (canvas.parentElement) {
-        canvas.width = canvas.parentElement.clientWidth;
+        const width = canvas.parentElement.clientWidth;
+        canvas.width = canvas.parentElement.clientWidth * devicePixelRatio;
+        canvas.style.width = `${width}px`;
     }
     const cellSize = canvas.width / mapSize.x;
     canvas.height = mapSize.y * cellSize;
@@ -38,8 +40,19 @@ export function initDemo1b() {
     const ctx = canvas.getContext('2d')!;
     //ctx.imageSmoothingEnabled = false;
 
-    renderMapGrid(canvas, ctx, map, mapSize, cellSize);
+    renderMapGrid(ctx, map, mapSize, cellSize);
+    renderPlayerPos(ctx, playerPos, cellSize);
 
+    const aspectRatio = 320 / 200;
+
+    renderEnv(ctx, aspectRatio, playerPos, playerDir, cellSize);
+}
+
+export function renderPlayerPos(
+    ctx: CanvasRenderingContext2D,
+    playerPos: Vec2,
+    cellSize: number,
+) {
     ctx.fillStyle = '#F60';
     ctx.beginPath();
     ctx.arc(
@@ -51,14 +64,9 @@ export function initDemo1b() {
     );
     ctx.fill();
     ctx.strokeStyle = '#F60';
-
-    const aspectRatio = 320 / 200;
-
-    renderEnv(canvas, ctx, aspectRatio, playerPos, playerDir, cellSize);
 }
 
 export function renderMapGrid(
-    canvas: HTMLCanvasElement,
     ctx: CanvasRenderingContext2D,
     map: Cell[][],
     mapSize: Vec2,
@@ -80,92 +88,111 @@ export function renderMapGrid(
 }
 
 export async function renderEnv(
-    canvas: HTMLCanvasElement,
     ctx: CanvasRenderingContext2D,
     aspectRatio: number,
     playerPos: Vec2,
     playerDir: Vec2,
     cellSize: number,
 ) {
-    const sideDist = {x: 0, y: 0};
-    let perpWallDist = 0;
-    let step = {x: 0, y: 0};
-    const cameraPlane = {
-        x: -playerDir.y,
-        y: playerDir.x,
-    };
-    for (let x = 0; x < 320; x++) {
-        const cameraX = aspectRatio * x / 320 - aspectRatio / 2;
-        const rayDir = add2(playerDir, mul2(cameraX, cameraPlane));
-        const mapPos = {x: playerPos.x | 0, y: playerPos.y | 0};
-        const deltaDist = {
-            x: Math.abs(1 / rayDir.x),
-            y: Math.abs(1 / rayDir.y),
+    while (true) {
+        const sideDist = {x: 0, y: 0};
+        let perpWallDist = 0;
+        let step = {x: 0, y: 0};
+        const cameraPlane = {
+            x: -playerDir.y,
+            y: playerDir.x,
         };
-        if (rayDir.x < 0) {
-            step.x = -1;
-            sideDist.x = (playerPos.x - mapPos.x) * deltaDist.x;
-        } else {
-            step.x = 1;
-            sideDist.x = (mapPos.x + 1.0 - playerPos.x) * deltaDist.x;
-        }
-        if (rayDir.y < 0) {
-            step.y = -1;
-            sideDist.y = (playerPos.y - mapPos.y) * deltaDist.y;
-        } else {
-            step.y = 1;
-            sideDist.y = (mapPos.y + 1.0 - playerPos.y) * deltaDist.y;
-        }
-
-        ctx.strokeStyle = '#fff';
-        let previous = {
-            x: playerPos.x * cellSize,
-            y: playerPos.y * cellSize,
-        };
-        while (true) {
-            let side = 0;
-            if (sideDist.x < sideDist.y) {
-                perpWallDist = sideDist.x;
-                sideDist.x += deltaDist.x;
-                mapPos.x += step.x;
-            } else {
-                perpWallDist = sideDist.y;
-                sideDist.y += deltaDist.y;
-                mapPos.y += step.y;
-                side = 1;
-            }
-            if (mapPos.x < 0 || mapPos.x >= mapSize.x || mapPos.y < 0 || mapPos.y >= mapSize.y) {
-                break;
-            }
-            const next = {
-                x: (playerPos.x + rayDir.x * perpWallDist) * cellSize,
-                y: (playerPos.y + rayDir.y * perpWallDist) * cellSize,
+        const points: Vec2[] = [];
+        for (let x = 0; x < 320; x++) {
+            const cameraX = aspectRatio * x / 320 - aspectRatio / 2;
+            const rayDir = add2(playerDir, mul2(cameraX, cameraPlane));
+            const mapPos = {x: playerPos.x | 0, y: playerPos.y | 0};
+            const deltaDist = {
+                x: Math.abs(1 / rayDir.x),
+                y: Math.abs(1 / rayDir.y),
             };
-            ctx.beginPath();
-            ctx.moveTo(previous.x, previous.y);
-            ctx.lineTo(next.x, next.y);
-            ctx.stroke();
-            previous = next;
-            await sleep(50);
-            const cell = map[mapPos.y][mapPos.x];
-            if (cell.solid) {
+            if (rayDir.x < 0) {
+                step.x = -1;
+                sideDist.x = (playerPos.x - mapPos.x) * deltaDist.x;
+            } else {
+                step.x = 1;
+                sideDist.x = (mapPos.x + 1.0 - playerPos.x) * deltaDist.x;
+            }
+            if (rayDir.y < 0) {
+                step.y = -1;
+                sideDist.y = (playerPos.y - mapPos.y) * deltaDist.y;
+            } else {
+                step.y = 1;
+                sideDist.y = (mapPos.y + 1.0 - playerPos.y) * deltaDist.y;
+            }
+
+            ctx.strokeStyle = '#fff';
+            let previous = {
+                x: playerPos.x * cellSize,
+                y: playerPos.y * cellSize,
+            };
+            while (true) {
+                if (sideDist.x < sideDist.y) {
+                    perpWallDist = sideDist.x;
+                    sideDist.x += deltaDist.x;
+                    mapPos.x += step.x;
+                } else {
+                    perpWallDist = sideDist.y;
+                    sideDist.y += deltaDist.y;
+                    mapPos.y += step.y;
+                }
+                if (mapPos.x < 0 || mapPos.x >= mapSize.x || mapPos.y < 0 || mapPos.y >= mapSize.y) {
+                    break;
+                }
+                if (perpWallDist === 0) {
+                    continue;
+                }
+                const next = {
+                    x: (playerPos.x + rayDir.x * perpWallDist) * cellSize,
+                    y: (playerPos.y + rayDir.y * perpWallDist) * cellSize,
+                };
+                ctx.beginPath();
+                ctx.moveTo(previous.x, previous.y);
+                ctx.lineTo(next.x, next.y);
+                ctx.stroke();
+                previous = next;
+                await sleep(100);
+                const cell = map[mapPos.y][mapPos.x];
+                if (cell.solid) {
+                    ctx.fillStyle = '#F00';
+                    ctx.beginPath();
+                    ctx.arc(
+                        next.x,
+                        next.y,
+                        3,
+                        0,
+                        Math.PI * 2,
+                    );
+                    ctx.fill();
+                    points.push(next);
+                    break;
+                } else {
+                    ctx.fillStyle = '#0F0';
+                    ctx.beginPath();
+                    ctx.arc(
+                        next.x,
+                        next.y,
+                        3,
+                        0,
+                        Math.PI * 2,
+                    );
+                    ctx.fill();
+                }
+            }
+            await sleep(200);
+            renderMapGrid(ctx, map, mapSize, cellSize);
+            renderPlayerPos(ctx, playerPos, cellSize);
+            for (const point of points) {
                 ctx.fillStyle = '#F00';
                 ctx.beginPath();
                 ctx.arc(
-                    next.x,
-                    next.y,
-                    3,
-                    0,
-                    Math.PI * 2,
-                );
-                ctx.fill();
-                break;
-            } else {
-                ctx.fillStyle = '#0F0';
-                ctx.beginPath();
-                ctx.arc(
-                    next.x,
-                    next.y,
+                    point.x,
+                    point.y,
                     3,
                     0,
                     Math.PI * 2,

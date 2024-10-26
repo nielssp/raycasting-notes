@@ -50,7 +50,7 @@ export function initDemo1() {
     const repaint = attachRenderFunction(canvas, dt => {
         updatePosition(dt, playerInputs, playerPos, playerDir);
         renderBackground(canvas, ctx);
-        renderEnv(canvas, ctx, aspectRatio, playerPos, playerDir, renderWall);
+        renderEnv(canvas, ctx, aspectRatio, playerPos, playerDir);
     });
     attachKeyboard(canvas, playerInputs);
     attachMouse(canvas, repaint, playerPos, playerDir);
@@ -250,83 +250,115 @@ export function renderEnv(
     aspectRatio: number,
     playerPos: Vec2,
     playerDir: Vec2,
-    renderWall: (
-        canvas: HTMLCanvasElement,
-        ctx: CanvasRenderingContext2D,
-        x: number,
-        perpWallDist: number,
-        side: number,
-        rayDir: Vec2,
-        cell: Cell,
-    ) => void,
 ) {
-    const sideDist = {x: 0, y: 0};
-    let perpWallDist = 0;
-    let step = {x: 0, y: 0};
-    const cameraPlane = {
-        x: -playerDir.y,
-        y: playerDir.x,
-    };
+    const cameraPlane = getCameraPlane(playerDir);
     for (let x = 0; x < canvas.width; x++) {
-        const cameraX = aspectRatio * x / canvas.width - aspectRatio / 2;
-        const rayDir = add2(playerDir, mul2(cameraX, cameraPlane));
-        const mapPos = {x: playerPos.x | 0, y: playerPos.y | 0};
-        const deltaDist = {
-            x: Math.abs(1 / rayDir.x),
-            y: Math.abs(1 / rayDir.y),
-        };
-        if (rayDir.x < 0) {
-            step.x = -1;
-            sideDist.x = (playerPos.x - mapPos.x) * deltaDist.x;
-        } else {
-            step.x = 1;
-            sideDist.x = (mapPos.x + 1.0 - playerPos.x) * deltaDist.x;
-        }
-        if (rayDir.y < 0) {
-            step.y = -1;
-            sideDist.y = (playerPos.y - mapPos.y) * deltaDist.y;
-        } else {
-            step.y = 1;
-            sideDist.y = (mapPos.y + 1.0 - playerPos.y) * deltaDist.y;
-        }
-
+        const ray = createRay(canvas, aspectRatio, playerPos, playerDir, x, cameraPlane);
         while (true) {
-            let side = 0;
-            if (sideDist.x < sideDist.y) {
-                perpWallDist = sideDist.x;
-                sideDist.x += deltaDist.x;
-                mapPos.x += step.x;
-            } else {
-                perpWallDist = sideDist.y;
-                sideDist.y += deltaDist.y;
-                mapPos.y += step.y;
-                side = 1;
-            }
-            if (mapPos.x < 0 || mapPos.x >= mapSize.x || mapPos.y < 0 || mapPos.y >= mapSize.y) {
+            advanceRay(ray);
+            const cell = getMapCell(map, ray.mapPos, mapSize)
+            if (!cell) {
                 break;
-            }
-            const cell = map[mapPos.y][mapPos.x];
-            if (cell.solid) {
-                renderWall(canvas, ctx, x, perpWallDist, side, rayDir, cell);
+            } else if (cell.solid) {
+                renderWall(canvas, ctx, ray);
                 break;
             }
         }
     }
 }
 
+export function getCameraPlane(playerDir: Vec2): Vec2 {
+    return {
+        x: -playerDir.y,
+        y: playerDir.x,
+    };
+}
+
+export function getMapCell(map: Cell[][], mapPos: Vec2, mapSize: Vec2): Cell | undefined {
+    if (mapPos.x < 0 || mapPos.x >= mapSize.x || mapPos.y < 0 || mapPos.y >= mapSize.y) {
+        return undefined;
+    } else {
+        return map[mapPos.y][mapPos.x];
+    }
+}
+
+export interface Ray {
+    x: number;
+    rayDir: Vec2;
+    mapPos: Vec2;
+    deltaDist: Vec2;
+    sideDist: Vec2;
+    step: Vec2;
+    side: 0 | 1;
+    perpWallDist: number;
+}
+
+export function createRay(
+    canvas: HTMLCanvasElement,
+    aspectRatio: number,
+    playerPos: Vec2,
+    playerDir: Vec2,
+    x: number,
+    cameraPlane: Vec2,
+): Ray {
+    const cameraX = aspectRatio * x / canvas.width - aspectRatio / 2;
+    const rayDir = add2(playerDir, mul2(cameraX, cameraPlane));
+    const mapPos = {x: playerPos.x | 0, y: playerPos.y | 0};
+    const deltaDist = {
+        x: Math.abs(1 / rayDir.x),
+        y: Math.abs(1 / rayDir.y),
+    };
+    const sideDist = {x: 0, y: 0};
+    const step = {x: 0, y: 0};
+    if (rayDir.x < 0) {
+        step.x = -1;
+        sideDist.x = (playerPos.x - mapPos.x) * deltaDist.x;
+    } else {
+        step.x = 1;
+        sideDist.x = (mapPos.x + 1.0 - playerPos.x) * deltaDist.x;
+    }
+    if (rayDir.y < 0) {
+        step.y = -1;
+        sideDist.y = (playerPos.y - mapPos.y) * deltaDist.y;
+    } else {
+        step.y = 1;
+        sideDist.y = (mapPos.y + 1.0 - playerPos.y) * deltaDist.y;
+    }
+    return {x, rayDir, mapPos, deltaDist, sideDist, step, side: 0, perpWallDist: 0};
+}
+
+export function advanceRay(
+    ray: Ray,
+) {
+    if (ray.sideDist.x < ray.sideDist.y) {
+        ray.perpWallDist = ray.sideDist.x;
+        ray.sideDist.x += ray.deltaDist.x;
+        ray.mapPos.x += ray.step.x;
+        ray.side = 0;
+    } else {
+        ray.perpWallDist = ray.sideDist.y;
+        ray.sideDist.y += ray.deltaDist.y;
+        ray.mapPos.y += ray.step.y;
+        ray.side = 1;
+    }
+}
+
+export function getWallHeight(canvasHeight: number, ray: Ray): {wallHeight: number, wallY: number} {
+    const wallHeight = Math.ceil(canvasHeight / ray.perpWallDist);
+    const wallY = Math.floor((canvasHeight - wallHeight) / 2);
+    return {wallHeight, wallY};
+}
+
 export function renderWall(
     canvas: HTMLCanvasElement,
     ctx: CanvasRenderingContext2D,
-    x: number,
-    perpWallDist: number,
-    side: number,
+    ray: Ray,
 ) {
-    const wallHeight = Math.ceil(canvas.height / perpWallDist);
-    const wallY = Math.floor((canvas.height - wallHeight) / 2);
+    const {wallHeight, wallY} = getWallHeight(canvas.height, ray);
 
-    ctx.strokeStyle = side ? '#005566' : '#003F4C';
+    ctx.strokeStyle = ray.side ? '#005566' : '#003F4C';
     ctx.beginPath()
-    ctx.moveTo(x + 0.5, Math.max(wallY, 0));
-    ctx.lineTo(x + 0.5, Math.min(wallY + wallHeight + 1, canvas.height));
+    ctx.moveTo(ray.x + 0.5, Math.max(wallY, 0));
+    ctx.lineTo(ray.x + 0.5, Math.min(wallY + wallHeight + 1, canvas.height));
     ctx.stroke();
 }

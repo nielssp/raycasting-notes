@@ -1,4 +1,4 @@
-import { PlayerInputs, attachKeyboard, attachMouse, attachTouch, renderEnv, updatePosition } from './demo1';
+import { PlayerInputs, Ray, advanceRay, attachKeyboard, attachMouse, attachTouch, createRay, getCameraPlane, getMapCell, getWallHeight, map, mapSize, renderEnv, updatePosition } from './demo1';
 import { Vec2, attachRenderFunction, initCanvas } from './util';
 
 export function initDemo2() {
@@ -18,7 +18,7 @@ export function initDemo2() {
     const repaint = attachRenderFunction(canvas, dt => {
         updatePosition(dt, playerInputs, playerPos, playerDir);
         renderBackground(canvas, ctx, sky);
-        renderEnv(canvas, ctx, aspectRatio, playerPos, playerDir, renderWall);
+        renderEnv(canvas, ctx, aspectRatio, playerPos, playerDir);
     });
     attachKeyboard(canvas, playerInputs);
     attachMouse(canvas, repaint, playerPos, playerDir);
@@ -43,21 +43,45 @@ export function renderBackground(
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 }
 
+export function renderEnv(
+    canvas: HTMLCanvasElement,
+    ctx: CanvasRenderingContext2D,
+    aspectRatio: number,
+    playerPos: Vec2,
+    playerDir: Vec2,
+) {
+    const cameraPlane = getCameraPlane(playerDir);
+    for (let x = 0; x < canvas.width; x++) {
+        const ray = createRay(canvas, aspectRatio, playerPos, playerDir, x, cameraPlane);
+        while (true) {
+            advanceRay(ray);
+            const cell = getMapCell(map, ray.mapPos, mapSize)
+            if (!cell) {
+                break;
+            } else if (cell.solid) {
+                renderWall(canvas, ctx, ray);
+                break;
+            }
+        }
+    }
+}
+
+export function getBrightness(dist: number, side: 0 | 1 = 0) {
+    return 1 - Math.min(0.8, Math.max(0, (dist - side) / 10));
+}
+
 export function renderWall(
     canvas: HTMLCanvasElement,
     ctx: CanvasRenderingContext2D,
-    x: number,
-    perpWallDist: number,
-    side: number,
+    ray: Ray,
 ) {
-    const wallHeight = Math.ceil(canvas.height / perpWallDist);
-    const wallY = Math.floor((canvas.height - wallHeight) / 2);
+    const {wallHeight, wallY} = getWallHeight(canvas.height, ray);
 
-    const brightness = 1 - Math.min(0.8, Math.max(0, (perpWallDist - side) / 10));
+    const brightness = getBrightness(ray.perpWallDist, ray.side);
     ctx.strokeStyle = `rgb(0, ${85 * brightness}, ${102 * brightness})`;
 
     ctx.beginPath()
-    ctx.moveTo(x + 0.5, Math.max(wallY, 0));
-    ctx.lineTo(x + 0.5, Math.min(wallY + wallHeight + 1, canvas.height));
+    ctx.moveTo(ray.x + 0.5, Math.max(wallY, 0));
+    ctx.lineTo(ray.x + 0.5, Math.min(wallY + wallHeight + 1, canvas.height));
     ctx.stroke();
 }
