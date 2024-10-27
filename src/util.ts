@@ -88,3 +88,25 @@ export function attachRenderFunction(
 export function sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
+
+const textureCache = new Map<string, Promise<ImageData>>();
+
+export function loadTextureData(src: string): Promise<ImageData> {
+    let texture = textureCache.get(src);
+    if (!texture) {
+        const img = new Image();
+        img.src = src;
+        texture = new Promise((resolve, reject) => {
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d')!;
+                canvas.width = img.width;
+                canvas.height = img.height;
+                context.drawImage(img, 0, 0);
+                resolve(context.getImageData(0, 0, canvas.width, canvas.height));
+            };
+            img.onerror = reject;
+        });
+    }
+    return texture;
+}

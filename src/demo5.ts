@@ -1,7 +1,7 @@
-import { PlayerInputs, Ray, advanceRay, attachKeyboard, attachMouse, attachTouch, createRay, getCameraPlane, getMapCell, getWallHeight, map, mapSize, updatePosition } from './demo1';
+import { PlayerInputs, Ray, advanceRay, attachKeyboard, attachMouse, attachTouch, checkDestination, createRay, getCameraPlane, getMapCell, map, mapSize, updatePosition } from './demo1';
 import { createSky, getBrightness, renderBackground } from './demo2';
-import { WallMeasurements, getWallX, getWallMeasurements, loadTextureData, renderWall, textureSize } from './demo3';
-import { Vec2, add2, attachRenderFunction, initCanvas, mul2 } from './util';
+import { WallMeasurements, getWallMeasurements, renderWall, textureSize } from './demo3';
+import { Vec2, attachRenderFunction, initCanvas, loadTextureData } from './util';
 
 export async function initDemo5() {
     const playerPos: Vec2 = {x: 2, y: 3};
@@ -14,20 +14,22 @@ export async function initDemo5() {
         rotationSpeed: 0,
     };
 
-    const wallTexture: ImageData = await loadTextureData('/assets/content/misc/textures/wall2.png');
+    const checkDest = (dest: Vec2) => checkDestination(dest, map, mapSize);
+
+    const wallTexture: ImageData = await loadTextureData('/assets/content/misc/textures/wall.png');
     const floorTexture: ImageData = await loadTextureData('/assets/content/misc/textures/floor.png');
 
     const [canvas, ctx] = initCanvas('canvas5');
     const aspectRatio = canvas.width / canvas.height;
     const sky = createSky(canvas, ctx);
     const repaint = attachRenderFunction(canvas, dt => {
-        updatePosition(dt, playerInputs, playerPos, playerDir);
+        updatePosition(dt, playerInputs, playerPos, playerDir, checkDest);
         renderBackground(canvas, ctx, sky);
         renderEnv(canvas, ctx, aspectRatio, playerPos, playerDir, wallTexture, floorTexture);
     });
     attachKeyboard(canvas, playerInputs);
-    attachMouse(canvas, repaint, playerPos, playerDir);
-    attachTouch(canvas, repaint, playerPos, playerDir);
+    attachMouse(canvas, repaint, playerPos, playerDir, checkDest);
+    attachTouch(canvas, repaint, playerPos, playerDir, checkDest);
 }
 
 export function renderEnv(
@@ -45,7 +47,8 @@ export function renderEnv(
         const stripe = ctx.getImageData(x, 0, 1, canvas.height);
 
         let yFloor = 0;
-        let yFloorMax = canvas.height;
+        const yFloorMax = canvas.height;
+
         while (true) {
             advanceRay(ray);
             const cell = getMapCell(map, ray.mapPos, mapSize)
@@ -55,7 +58,7 @@ export function renderEnv(
             const wall = getWallMeasurements(ray, canvas.height, playerPos);
             const cellY = (canvas.height - wall.wallHeight) * 0.5;
             const floorCellY = Math.ceil(cellY);
-            const floor = getFloorMeasurements(ray, canvas.height, wall);
+            const floor = getFloorMeasurements(ray, wall);
             yFloor = renderFloor(canvas, stripe, floor, floorCellY, playerPos, yFloor, yFloorMax, ray.perpWallDist, floorTexture);
 
             if (cell.solid) {
@@ -72,7 +75,7 @@ export interface FloorMeasurements {
     floorYWall: number;
 }
 
-export function getFloorMeasurements(ray: Ray, canvasHeight: number, wall: WallMeasurements): FloorMeasurements {
+export function getFloorMeasurements(ray: Ray, wall: WallMeasurements): FloorMeasurements {
     let floorXWall: number, floorYWall: number;
     if (ray.side === 0 && ray.rayDir.x > 0) {
         floorXWall = ray.mapPos.x;
@@ -99,8 +102,11 @@ export function renderFloor(
     yFloor: number,
     yFloorMax: number,
     perpWallDist: number,
-    floorTexture: ImageData,
+    floorTexture?: ImageData,
 ): number {
+    if (!floorTexture) {
+        return Math.max(yFloor, Math.min(floorCellY, yFloorMax));
+    }
     while (yFloor < floorCellY && yFloor < yFloorMax) {
         const rowDistance = canvas.height / (canvas.height - 2 * yFloor);
         const weight = rowDistance / perpWallDist;

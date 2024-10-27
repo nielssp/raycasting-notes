@@ -1,5 +1,9 @@
 import { Vec2, add2, attachRenderFunction, initCanvas, mul2, set2 } from './util';
 
+// Demo 1
+// Basic raycasting
+
+// Structure for keeping track of player inputs
 export interface PlayerInputs {
     moveForward: boolean;
     moveBackward: boolean;
@@ -8,10 +12,13 @@ export interface PlayerInputs {
     rotationSpeed: number;
 }
 
+// A single map cell
 export interface Cell {
+    // Walls are solid
     solid: boolean;
 }
 
+// Map created from array of strings. 'X' is a wall, ' ' is open space.
 export const map: Cell[][] = [
     'XXXXXXXXXXXXXXXXXXXX',
     'X        X         X',
@@ -35,8 +42,12 @@ export const mapSize: Vec2 = {
 };
 
 export function initDemo1() {
+    // Player/camera position vector
     const playerPos: Vec2 = {x: 2, y: 3};
+    // Player/camera direction unit vector
     const playerDir: Vec2 = {x: 1, y: 0};
+
+    // Initial player input states
     const playerInputs: PlayerInputs = {
         moveForward: false,
         moveBackward: false,
@@ -45,16 +56,18 @@ export function initDemo1() {
         rotationSpeed: 0,
     };
 
+    const checkDest = (dest: Vec2) => checkDestination(dest, map, mapSize);
+
     const [canvas, ctx] = initCanvas('canvas1');
     const aspectRatio = canvas.width / canvas.height;
     const repaint = attachRenderFunction(canvas, dt => {
-        updatePosition(dt, playerInputs, playerPos, playerDir);
+        updatePosition(dt, playerInputs, playerPos, playerDir, checkDest);
         renderBackground(canvas, ctx);
         renderEnv(canvas, ctx, aspectRatio, playerPos, playerDir);
     });
     attachKeyboard(canvas, playerInputs);
-    attachMouse(canvas, repaint, playerPos, playerDir);
-    attachTouch(canvas, repaint, playerPos, playerDir);
+    attachMouse(canvas, repaint, playerPos, playerDir, checkDest);
+    attachTouch(canvas, repaint, playerPos, playerDir, checkDest);
 }
 
 // Position handling
@@ -64,8 +77,11 @@ export function updatePosition(
     playerInputs: PlayerInputs,
     playerPos: Vec2,
     playerDir: Vec2,
+    checkDest: (dest: Vec2) => boolean,
 ) {
     if (playerInputs.moveForward || playerInputs.moveBackward) {
+        // Move forward or backward by adding or subtracting the direction vector multiplied by
+        // the movement speed
         const moveSpeed = dt * 3;
         const newPos = {...playerPos};
         if (playerInputs.moveForward) {
@@ -75,12 +91,13 @@ export function updatePosition(
             newPos.x -= moveSpeed * playerDir.x;
             newPos.y -= moveSpeed * playerDir.y;
         }
-        if (checkDestination(newPos)) {
+        if (checkDest(newPos)) {
             set2(playerPos, newPos);
         }
     }
 
     if (playerInputs.turnLeft || playerInputs.turnRight) {
+        // Apply acceleration to better allow for small adjustments
         const rotSpeed = dt * 3;
         const rotAccel = dt * 0.6;
         if (playerInputs.turnLeft) {
@@ -88,6 +105,7 @@ export function updatePosition(
         } else {
             playerInputs.rotationSpeed = Math.min(rotSpeed, Math.max(0, playerInputs.rotationSpeed) + rotAccel);
         }
+        // Rotate direction vector
         set2(playerDir, {
             x: playerDir.x * Math.cos(playerInputs.rotationSpeed) - playerDir.y * Math.sin(playerInputs.rotationSpeed),
             y: playerDir.x * Math.sin(playerInputs.rotationSpeed) + playerDir.y * Math.cos(playerInputs.rotationSpeed),
@@ -97,8 +115,11 @@ export function updatePosition(
     }
 }
 
+// Checks whether the given position is inside a wall
 export function checkDestination(
     pos: Vec2,
+    map: Cell[][],
+    mapSize: Vec2,
 ): boolean {
     const mapPos = {x: pos.x | 0, y: pos.y | 0};
     if (mapPos.x < 0 || mapPos.x >= mapSize.x || mapPos.y < 0 || mapPos.y >= mapSize.y) {
@@ -114,6 +135,7 @@ export function attachKeyboard(canvas: HTMLCanvasElement, playerInputs: PlayerIn
     canvas.addEventListener('keyup', e => updateInputs(e, false, playerInputs));
 }
 
+// Update player input states based on keyboard events
 export function updateInputs(e: KeyboardEvent, state: boolean, playerInputs: PlayerInputs) {
     switch (e.key) {
         case 'ArrowLeft':
@@ -145,6 +167,7 @@ export function attachMouse(
     repaint: () => void,
     playerPos: Vec2,
     playerDir: Vec2,
+    checkDest: (dest: Vec2) => boolean,
 ) {
     let dragging = false;
     canvas.addEventListener('mousedown', () => {
@@ -154,12 +177,15 @@ export function attachMouse(
         if (!dragging) {
             return;
         }
+        // Add or subtract direction vector from position when moving mouse up
+        // and down
         const moveSpeed = -0.005 * e.movementY;
         const newPos = add2(playerPos, mul2(moveSpeed, playerDir));
-        if (checkDestination(newPos)) {
+        if (checkDest(newPos)) {
             set2(playerPos, newPos);
         }
 
+        // Rotate direction vector when moving mouse left and right
         const rotSpeed = 0.005 * e.movementX;
         set2(playerDir, {
             x: playerDir.x * Math.cos(rotSpeed) - playerDir.y * Math.sin(rotSpeed),
@@ -186,12 +212,14 @@ export function attachTouch(
     repaint: () => void,
     playerPos: Vec2,
     playerDir: Vec2,
+    checkDest: (dest: Vec2) => boolean,
 ) {
     let touch: Touch | undefined;
     canvas.addEventListener('touchstart', e => {
         if (e.changedTouches.length) {
             e.preventDefault();
             touch = e.changedTouches[0];
+            canvas.focus();
         }
     })
     document.addEventListener('touchmove', e => {
@@ -210,7 +238,7 @@ export function attachTouch(
 
         const moveSpeed = 0.005 * movement.y;
         const newPos = add2(playerPos, mul2(moveSpeed, playerDir));
-        if (checkDestination(newPos)) {
+        if (checkDest(newPos)) {
             set2(playerPos, newPos);
         }
 
@@ -251,6 +279,8 @@ export function renderEnv(
     playerPos: Vec2,
     playerDir: Vec2,
 ) {
+    // The camera plane vector is a vector perpendicular to the player direction
+    // vector moving from screen left to screen right
     const cameraPlane = getCameraPlane(playerDir);
     for (let x = 0; x < canvas.width; x++) {
         const ray = createRay(canvas, aspectRatio, playerPos, playerDir, x, cameraPlane);
@@ -258,8 +288,10 @@ export function renderEnv(
             advanceRay(ray);
             const cell = getMapCell(map, ray.mapPos, mapSize)
             if (!cell) {
+                // Outside of map
                 break;
             } else if (cell.solid) {
+                // The ray hit a wall, render it
                 renderWall(canvas, ctx, ray);
                 break;
             }
@@ -274,7 +306,7 @@ export function getCameraPlane(playerDir: Vec2): Vec2 {
     };
 }
 
-export function getMapCell(map: Cell[][], mapPos: Vec2, mapSize: Vec2): Cell | undefined {
+export function getMapCell<T>(map: T[][], mapPos: Vec2, mapSize: Vec2): T | undefined {
     if (mapPos.x < 0 || mapPos.x >= mapSize.x || mapPos.y < 0 || mapPos.y >= mapSize.y) {
         return undefined;
     } else {
@@ -301,8 +333,14 @@ export function createRay(
     x: number,
     cameraPlane: Vec2,
 ): Ray {
+    // A number from -aspectRatio/2 to +aspectRatio/2 where 0 represents the
+    // center of the screen.
     const cameraX = aspectRatio * x / canvas.width - aspectRatio / 2;
+    // Scale camera plane vector by the number above then add it to the player
+    // direction to get the current ray direction vector
     const rayDir = add2(playerDir, mul2(cameraX, cameraPlane));
+    // The initial map position is the integer parts of the player position
+    // vector
     const mapPos = {x: playerPos.x | 0, y: playerPos.y | 0};
     const deltaDist = {
         x: Math.abs(1 / rayDir.x),
@@ -343,8 +381,8 @@ export function advanceRay(
     }
 }
 
-export function getWallHeight(canvasHeight: number, ray: Ray): {wallHeight: number, wallY: number} {
-    const wallHeight = Math.ceil(canvasHeight / ray.perpWallDist);
+export function getWallHeight(canvasHeight: number, dist: number): {wallHeight: number, wallY: number} {
+    const wallHeight = Math.ceil(canvasHeight / dist);
     const wallY = Math.floor((canvasHeight - wallHeight) / 2);
     return {wallHeight, wallY};
 }
@@ -354,7 +392,7 @@ export function renderWall(
     ctx: CanvasRenderingContext2D,
     ray: Ray,
 ) {
-    const {wallHeight, wallY} = getWallHeight(canvas.height, ray);
+    const {wallHeight, wallY} = getWallHeight(canvas.height, ray.perpWallDist);
 
     ctx.strokeStyle = ray.side ? '#005566' : '#003F4C';
     ctx.beginPath()

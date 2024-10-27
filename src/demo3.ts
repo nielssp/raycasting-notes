@@ -1,6 +1,6 @@
-import { PlayerInputs, Ray, advanceRay, attachKeyboard, attachMouse, attachTouch, createRay, getCameraPlane, getMapCell, getWallHeight, map, mapSize, renderEnv, updatePosition } from './demo1';
+import { PlayerInputs, Ray, advanceRay, attachKeyboard, attachMouse, attachTouch, checkDestination, createRay, getCameraPlane, getMapCell, getWallHeight, map, mapSize, updatePosition } from './demo1';
 import { createSky, getBrightness, renderBackground } from './demo2';
-import { Vec2, attachRenderFunction, initCanvas } from './util';
+import { Vec2, attachRenderFunction, initCanvas, loadTextureData } from './util';
 
 export const textureSize = {x: 64, y: 64};
 
@@ -15,35 +15,21 @@ export async function initDemo3() {
         rotationSpeed: 0,
     };
 
-    const wallTexture: ImageData = await loadTextureData('/assets/content/misc/textures/wall2.png');
+    const checkDest = (dest: Vec2) => checkDestination(dest, map, mapSize);
+
+    const wallTexture: ImageData = await loadTextureData('/assets/content/misc/textures/wall.png');
 
     const [canvas, ctx] = initCanvas('canvas3');
     const aspectRatio = canvas.width / canvas.height;
     const sky = createSky(canvas, ctx);
     const repaint = attachRenderFunction(canvas, dt => {
-        updatePosition(dt, playerInputs, playerPos, playerDir);
+        updatePosition(dt, playerInputs, playerPos, playerDir, checkDest);
         renderBackground(canvas, ctx, sky);
         renderEnv(canvas, ctx, aspectRatio, playerPos, playerDir, wallTexture);
     });
     attachKeyboard(canvas, playerInputs);
-    attachMouse(canvas, repaint, playerPos, playerDir);
-    attachTouch(canvas, repaint, playerPos, playerDir);
-}
-
-export function loadTextureData(src: string): Promise<ImageData> {
-  const img = new Image();
-  img.src = src;
-  return new Promise((resolve, reject) => {
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const context = canvas.getContext('2d')!;
-      canvas.width = img.width;
-      canvas.height = img.height;
-      context.drawImage(img, 0, 0);
-      resolve(context.getImageData(0, 0, canvas.width, canvas.height));
-    };
-    img.onerror = reject;
-  });
+    attachMouse(canvas, repaint, playerPos, playerDir, checkDest);
+    attachTouch(canvas, repaint, playerPos, playerDir, checkDest);
 }
 
 export function renderEnv(
@@ -80,7 +66,7 @@ export interface WallMeasurements {
 }
 
 export function getWallMeasurements(ray: Ray, canvasHeight: number, playerPos: Vec2): WallMeasurements {
-    const {wallHeight, wallY} = getWallHeight(canvasHeight, ray);
+    const {wallHeight, wallY} = getWallHeight(canvasHeight, ray.perpWallDist);
     let wallX: number;
     if (ray.side === 0) {
         wallX = playerPos.y + ray.perpWallDist * ray.rayDir.y - ray.mapPos.y;
@@ -95,17 +81,19 @@ export function renderWall(
     stripe: ImageData,
     ray: Ray,
     wall: WallMeasurements,
-    wallTexture: ImageData,
+    wallTexture?: ImageData,
 ) {
     const brightness = getBrightness(ray.perpWallDist, ray.side);
 
     let texX: number = wall.wallX * textureSize.x | 0;
-    if (ray.side === 0 && ray.rayDir.x > 0) {
+    /*
+    if (ray.side === 0 && ray.rayDir.x < 0) {
         texX = textureSize.x - texX - 1;
     }
-    if (ray.side === 1 && ray.rayDir.y < 0) {
+    if (ray.side === 1 && ray.rayDir.y > 0) {
         texX = textureSize.x - texX - 1;
     }
+    */
     const yStart = Math.max(wall.wallY, 0);
     const yEnd = Math.min(wall.wallY + wall.wallHeight, canvas.height);
 
@@ -113,15 +101,21 @@ export function renderWall(
     let texPos = wall.wallY < yStart ? (yStart - wall.wallY) * step : 0;
 
     for (let y = yStart; y < yEnd; y++) {
-      const offset = y * 4;
-      const texY = texPos & (textureSize.y - 1);
-      texPos += step;
-      let texture = wallTexture;
-      const texOffset = (texY * textureSize.x + texX) * 4;
-      stripe.data[offset] = texture.data[texOffset] * brightness;
-      stripe.data[offset + 1] = texture.data[texOffset + 1] * brightness;
-      stripe.data[offset + 2] = texture.data[texOffset + 2] * brightness;
-      stripe.data[offset + 3] = 255;
+        const offset = y * 4;
+        const texY = texPos & (textureSize.y - 1);
+        texPos += step;
+        if (wallTexture) {
+            const texOffset = (texY * textureSize.x + texX) * 4;
+            stripe.data[offset] = wallTexture.data[texOffset] * brightness;
+            stripe.data[offset + 1] = wallTexture.data[texOffset + 1] * brightness;
+            stripe.data[offset + 2] = wallTexture.data[texOffset + 2] * brightness;
+            stripe.data[offset + 3] = 255;
+        } else {
+            stripe.data[offset] = 0;
+            stripe.data[offset + 1] = 85 * brightness;
+            stripe.data[offset + 2] = 102 * brightness;
+            stripe.data[offset + 3] = 255;
+        }
     }
 }
 

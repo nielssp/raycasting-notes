@@ -103,8 +103,8 @@ export async function renderEnv(
             y: playerDir.x,
         };
         const points: Vec2[] = [];
-        for (let x = 0; x < 320; x++) {
-            const cameraX = aspectRatio * x / 320 - aspectRatio / 2;
+        for (let x = 0; x < 32; x++) {
+            const cameraX = aspectRatio * x / 32 - aspectRatio / 2;
             const rayDir = add2(playerDir, mul2(cameraX, cameraPlane));
             const mapPos = {x: playerPos.x | 0, y: playerPos.y | 0};
             const deltaDist = {
