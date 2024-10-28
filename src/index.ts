@@ -6,6 +6,7 @@ import { initDemo5 } from './demo5';
 import { initDemo6 } from './demo6';
 import { initDemo7 } from './demo7';
 import { initDemo8 } from './demo8';
+import { initDemo9 } from './demo9';
 
 initDemo1();
 initDemo1b();
@@ -15,3 +16,4 @@ initDemo5();
 initDemo6();
 initDemo7();
 initDemo8();
+initDemo9();

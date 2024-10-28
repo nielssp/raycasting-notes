@@ -102,6 +102,7 @@ export function loadTextureData(src: string): Promise<ImageData> {
                 const context = canvas.getContext('2d')!;
                 canvas.width = img.width;
                 canvas.height = img.height;
+                //context.transform(0, 1, 1, 0, 0, 0);
                 context.drawImage(img, 0, 0);
                 resolve(context.getImageData(0, 0, canvas.width, canvas.height));
             };

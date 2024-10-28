@@ -1,7 +1,6 @@
 import { PlayerInputs, advanceRay, attachKeyboard, attachMouse, attachTouch, checkDestination, createRay, getCameraPlane, getMapCell, map, mapSize, updatePosition } from './demo1';
-import { getBrightness } from './demo2';
-import { getWallMeasurements, renderWall, textureSize } from './demo3';
-import { FloorMeasurements, getFloorMeasurements, renderFloor } from './demo5';
+import { WallMeasurements, getWallMeasurements, renderWall } from './demo3';
+import { FloorMeasurements, getFloorMeasurements, mapFloorTexture, renderFloor } from './demo5';
 import { Vec2, attachRenderFunction, initCanvas, loadTextureData } from './util';
 
 export async function initDemo6() {
@@ -59,12 +58,9 @@ export function renderEnv(
                 break;
             }
             const wall = getWallMeasurements(ray, canvas.height, playerPos);
-            const cellY = (canvas.height - wall.wallHeight) * 0.5;
-            const floorCellY = Math.ceil(cellY);
-            const ceilingCellY = Math.ceil(cellY);
             const floor = getFloorMeasurements(ray, wall);
-            yFloor = renderFloor(canvas, stripe, floor, floorCellY, playerPos, yFloor, yFloorMax, ray.perpWallDist, floorTexture);
-            yCeiling = renderCeiling(canvas, stripe, floor, playerPos, ceilingCellY, yCeiling, yCeilingMax, ray.perpWallDist, ceilingTexture)
+            [yFloor, yCeiling] = renderFloorAndCeiling(canvas, stripe, wall, floor, playerPos, ray.perpWallDist,
+                yFloor, yCeiling, yFloorMax, yCeilingMax, floorTexture, ceilingTexture);
 
             if (cell.solid) {
                 renderWall(canvas, stripe, ray, wall, wallTexture);
@@ -73,6 +69,28 @@ export function renderEnv(
         }
         ctx.putImageData(stripe, x, 0);
     }
+}
+
+export function renderFloorAndCeiling(
+    canvas: HTMLCanvasElement,
+    stripe: ImageData,
+    wall: WallMeasurements,
+    floor: FloorMeasurements,
+    playerPos: Vec2,
+    floorDist: number,
+    yFloor: number,
+    yCeiling: number,
+    yFloorMax: number,
+    yCeilingMax: number,
+    floorTexture?: ImageData,
+    ceilingTexture?: ImageData,
+): [number, number]{
+    const cellY = (canvas.height - wall.wallHeight) * 0.5;
+    const floorCellY = Math.ceil(cellY);
+    const ceilingCellY = Math.ceil(cellY);
+    yFloor = renderFloor(canvas, stripe, floor, floorCellY, playerPos, yFloor, yFloorMax, floorDist, floorTexture);
+    yCeiling = renderCeiling(canvas, stripe, floor, playerPos, ceilingCellY, yCeiling, yCeilingMax, floorDist, ceilingTexture)
+    return [yFloor, yCeiling];
 }
 
 export function renderCeiling(
@@ -90,19 +108,7 @@ export function renderCeiling(
         return Math.max(yCeiling, Math.min(ceilingCellY, yCeilingMax));
     }
     while (yCeiling < ceilingCellY && yCeiling < yCeilingMax) {
-        const rowDistance = canvas.height / (canvas.height - 2 * yCeiling);
-        const weight = rowDistance / perpWallDist;
-        const ceilingX = weight * floor.floorXWall + (1 - weight) * playerPos.x;
-        const ceilingY = weight * floor.floorYWall + (1 - weight) * playerPos.y;
-        let tx = ((textureSize.x * ceilingX) | 0) & (textureSize.x - 1);
-        let ty = ((textureSize.y * ceilingY) | 0) & (textureSize.y - 1);
-        const texOffset = (ty * textureSize.x + tx) * 4;
-        const brightness = getBrightness(rowDistance);
-        const offset = yCeiling * 4;
-        stripe.data[offset] = ceilingTexture.data[texOffset] * brightness;
-        stripe.data[offset + 1] = ceilingTexture.data[texOffset + 1] * brightness;
-        stripe.data[offset + 2] = ceilingTexture.data[texOffset + 2] * brightness;
-        stripe.data[offset + 3] = 255;
+        mapFloorTexture(canvas, stripe, yCeiling, floor, playerPos, yCeiling, perpWallDist, ceilingTexture);
         yCeiling++;
     }
     return yCeiling;

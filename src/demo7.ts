@@ -1,7 +1,7 @@
 import { PlayerInputs, advanceRay, attachKeyboard, attachMouse, attachTouch, checkDestination, createRay, getCameraPlane, getMapCell, updatePosition } from './demo1';
 import { getWallMeasurements, renderWall } from './demo3';
-import { getFloorMeasurements, renderFloor } from './demo5';
-import { renderCeiling } from './demo6';
+import { getFloorMeasurements } from './demo5';
+import { renderFloorAndCeiling } from './demo6';
 import { Vec2, attachRenderFunction, initCanvas, loadTextureData } from './util';
 
 export interface Cell {
@@ -139,12 +139,9 @@ export function renderEnv(
                 break;
             }
             const wall = getWallMeasurements(ray, canvas.height, playerPos);
-            const cellY = (canvas.height - wall.wallHeight) * 0.5;
-            const floorCellY = Math.ceil(cellY);
-            const ceilingCellY = Math.ceil(cellY);
             const floor = getFloorMeasurements(ray, wall);
-            yFloor = renderFloor(canvas, stripe, floor, floorCellY, playerPos, yFloor, yFloorMax, ray.perpWallDist, floorCell?.floorTexture);
-            yCeiling = renderCeiling(canvas, stripe, floor, playerPos, ceilingCellY, yCeiling, yCeilingMax, ray.perpWallDist, floorCell?.ceilingTexture)
+            [yFloor, yCeiling] = renderFloorAndCeiling(canvas, stripe, wall, floor, playerPos, ray.perpWallDist,
+                    yFloor, yCeiling, yFloorMax, yCeilingMax, floorCell?.floorTexture, floorCell?.ceilingTexture);
 
             if (cell.solid) {
                 renderWall(canvas, stripe, ray, wall, cell.wallTexture);

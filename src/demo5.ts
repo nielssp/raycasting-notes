@@ -108,22 +108,34 @@ export function renderFloor(
         return Math.max(yFloor, Math.min(floorCellY, yFloorMax));
     }
     while (yFloor < floorCellY && yFloor < yFloorMax) {
-        const rowDistance = canvas.height / (canvas.height - 2 * yFloor);
-        const weight = rowDistance / perpWallDist;
-        const floorX = weight * floor.floorXWall + (1 - weight) * playerPos.x;
-        const floorY = weight * floor.floorYWall + (1 - weight) * playerPos.y;
-        let tx = ((textureSize.x * floorX) | 0) & (textureSize.x - 1);
-        let ty = ((textureSize.y * floorY) | 0) & (textureSize.y - 1);
-        const texOffset = (ty * textureSize.x + tx) * 4;
-        const brightness = getBrightness(rowDistance);
         const y = (canvas.height - yFloor - 1);
-        const offset = y * 4;
-        stripe.data[offset] = floorTexture.data[texOffset] * brightness;
-        stripe.data[offset + 1] = floorTexture.data[texOffset + 1] * brightness;
-        stripe.data[offset + 2] = floorTexture.data[texOffset + 2] * brightness;
-        stripe.data[offset + 3] = 255;
+        mapFloorTexture(canvas, stripe, y, floor, playerPos, yFloor, perpWallDist, floorTexture);
         yFloor++;
     }
     return yFloor;
 }
 
+export function mapFloorTexture(
+    canvas: HTMLCanvasElement,
+    stripe: ImageData,
+    y: number,
+    floor: FloorMeasurements,
+    playerPos: Vec2,
+    yFloor: number,
+    perpWallDist: number,
+    floorTexture: ImageData,
+) {
+    const rowDistance = canvas.height / (canvas.height - 2 * yFloor);
+    const weight = rowDistance / perpWallDist;
+    const floorX = weight * floor.floorXWall + (1 - weight) * playerPos.x;
+    const floorY = weight * floor.floorYWall + (1 - weight) * playerPos.y;
+    let tx = ((textureSize.x * floorX) | 0) & (textureSize.x - 1);
+    let ty = ((textureSize.y * floorY) | 0) & (textureSize.y - 1);
+    const texOffset = (ty * textureSize.x + tx) * 4;
+    const brightness = getBrightness(rowDistance);
+    const offset = y * 4;
+    stripe.data[offset] = floorTexture.data[texOffset] * brightness;
+    stripe.data[offset + 1] = floorTexture.data[texOffset + 1] * brightness;
+    stripe.data[offset + 2] = floorTexture.data[texOffset + 2] * brightness;
+    stripe.data[offset + 3] = 255;
+}

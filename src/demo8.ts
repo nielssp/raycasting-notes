@@ -1,7 +1,7 @@
 import { PlayerInputs, Ray, advanceRay, attachKeyboard, attachMouse, attachTouch, checkDestination, createRay, getCameraPlane, getMapCell, getWallHeight, updatePosition } from './demo1';
 import { getWallMeasurements, renderWall } from './demo3';
-import { FloorMeasurements, getFloorMeasurements, renderFloor } from './demo5';
-import { renderCeiling } from './demo6';
+import { FloorMeasurements, getFloorMeasurements } from './demo5';
+import { renderFloorAndCeiling } from './demo6';
 import { Vec2, attachRenderFunction, initCanvas, loadTextureData } from './util';
 
 export interface Door {
@@ -50,9 +50,9 @@ export const mapSize: Vec2 = {
     y: map.length,
 };
 
-const doorDepth = 1 / 8;
-const doorStart = 0.5 - doorDepth / 2;
-const doorEnd = doorStart + doorDepth
+export const doorDepth = 1 / 8;
+export const doorStart = 0.5 - doorDepth / 2;
+export const doorEnd = doorStart + doorDepth
 
 export async function initDemo8() {
     const playerPos: Vec2 = {x: 2, y: 3};
@@ -294,12 +294,9 @@ export function renderEnv(
                 break;
             }
             const wall = getWallMeasurements(ray, canvas.height, playerPos);
-            const cellY = (canvas.height - wall.wallHeight) * 0.5;
-            const floorCellY = Math.ceil(cellY);
-            const ceilingCellY = Math.ceil(cellY);
             const floor = getFloorMeasurements(ray, wall);
-            yFloor = renderFloor(canvas, stripe, floor, floorCellY, playerPos, yFloor, yFloorMax, ray.perpWallDist, floorCell?.floorTexture);
-            yCeiling = renderCeiling(canvas, stripe, floor, playerPos, ceilingCellY, yCeiling, yCeilingMax, ray.perpWallDist, floorCell?.ceilingTexture)
+            [yFloor, yCeiling] = renderFloorAndCeiling(canvas, stripe, wall, floor, playerPos, ray.perpWallDist,
+                yFloor, yCeiling, yFloorMax, yCeilingMax, floorCell?.floorTexture, floorCell?.ceilingTexture);
 
             if (cell.door) {
                 if (renderDoor(canvas, stripe, cell, cell.door, ray, playerPos, floor, yFloor, yCeiling, yFloorMax, yCeilingMax)) {
@@ -328,6 +325,7 @@ export function renderDoor(
     yFloorMax: number,
     yCeilingMax: number,
 ): boolean {
+    const floorWallDist = ray.perpWallDist;
     let doorX: number;
     if (ray.side === 0) {
         doorX = playerPos.y + (ray.sideDist.x - ray.deltaDist.x * doorEnd) * ray.rayDir.y;
@@ -335,7 +333,10 @@ export function renderDoor(
         doorX = playerPos.x + (ray.sideDist.y - ray.deltaDist.y * doorEnd) * ray.rayDir.x;
     }
     let doorMapX = Math.floor(doorX);
+    let doorSide = false;
     if (doorX - doorMapX < door.offset) {
+        // The door is partially open and we're looking through the opening
+        doorSide = true;
         if (ray.side === 0) {
             doorX = playerPos.x + (ray.sideDist.y - ray.deltaDist.y * (1 - door.offset)) * ray.rayDir.x;
         } else {
@@ -343,59 +344,33 @@ export function renderDoor(
         }
         let doorMapX = Math.floor(doorX);
         if (doorX - doorMapX < doorStart || doorX - doorMapX > doorEnd) {
+            return false;
         } else if (ray.side === 1 && doorMapX === ray.mapPos.y && ray.rayDir.x > 0) {
-            const floorWallDist = ray.perpWallDist;
             ray.side = 0;
             ray.perpWallDist = ray.sideDist.x - ray.deltaDist.x * (1 - door.offset);
             ray.sideDist.x += ray.deltaDist.x * door.offset;
-            const wall = getWallMeasurements(ray, canvas.height, playerPos);
-            const cellY = (canvas.height - wall.wallHeight) * 0.5;
-            const floorCellY = Math.ceil(cellY);
-            const ceilingCellY = Math.ceil(cellY);
-            yFloor = renderFloor(canvas, stripe, floor, floorCellY, playerPos, yFloor, yFloorMax, floorWallDist, cell?.floorTexture);
-            yCeiling = renderCeiling(canvas, stripe, floor, playerPos, ceilingCellY, yCeiling, yCeilingMax, floorWallDist, cell?.ceilingTexture)
-            renderWall(canvas, stripe, ray, wall, door.sideTexture);
-            return true;
         } else if (ray.side === 0 && doorMapX === ray.mapPos.x && ray.rayDir.y > 0) {
-            const floorWallDist = ray.perpWallDist;
             ray.side = 1;
             ray.perpWallDist = ray.sideDist.y - ray.deltaDist.y * (1 - door.offset);
             ray.sideDist.y += ray.deltaDist.y * door.offset;
-            const wall = getWallMeasurements(ray, canvas.height, playerPos);
-            const cellY = (canvas.height - wall.wallHeight) * 0.5;
-            const floorCellY = Math.ceil(cellY);
-            const ceilingCellY = Math.ceil(cellY);
-            yFloor = renderFloor(canvas, stripe, floor, floorCellY, playerPos, yFloor, yFloorMax, floorWallDist, cell?.floorTexture);
-            yCeiling = renderCeiling(canvas, stripe, floor, playerPos, ceilingCellY, yCeiling, yCeilingMax, floorWallDist, cell?.ceilingTexture)
-            renderWall(canvas, stripe, ray, wall, door.sideTexture);
-            return true;
+        } else {
+            return false;
         }
     } else if (ray.side === 0 && doorMapX === ray.mapPos.y) {
-        const floorWallDist = ray.perpWallDist;
         ray.perpWallDist = ray.sideDist.x - ray.deltaDist.x * doorEnd;
         ray.sideDist.x += ray.deltaDist.x * doorStart;
-        const wall = getWallMeasurements(ray, canvas.height, playerPos);
-        const cellY = (canvas.height - wall.wallHeight) * 0.5;
-        const floorCellY = Math.ceil(cellY);
-        const ceilingCellY = Math.ceil(cellY);
-        yFloor = renderFloor(canvas, stripe, floor, floorCellY, playerPos, yFloor, yFloorMax, floorWallDist, cell?.floorTexture);
-        yCeiling = renderCeiling(canvas, stripe, floor, playerPos, ceilingCellY, yCeiling, yCeilingMax, floorWallDist, cell?.ceilingTexture)
-        wall.wallX -= door.offset;
-        renderWall(canvas, stripe, ray, wall, cell.wallTexture);
-        return true;
     } else if (ray.side === 1 && doorMapX === ray.mapPos.x) {
-        const floorWallDist = ray.perpWallDist;
         ray.perpWallDist = ray.sideDist.y - ray.deltaDist.y * doorEnd;
         ray.sideDist.y += ray.deltaDist.y * doorStart;
-        const wall = getWallMeasurements(ray, canvas.height, playerPos);
-        const cellY = (canvas.height - wall.wallHeight) * 0.5;
-        const floorCellY = Math.ceil(cellY);
-        const ceilingCellY = Math.ceil(cellY);
-        yFloor = renderFloor(canvas, stripe, floor, floorCellY, playerPos, yFloor, yFloorMax, floorWallDist, cell?.floorTexture);
-        yCeiling = renderCeiling(canvas, stripe, floor, playerPos, ceilingCellY, yCeiling, yCeilingMax, floorWallDist, cell?.ceilingTexture)
-        wall.wallX -= door.offset;
-        renderWall(canvas, stripe, ray, wall, cell.wallTexture);
-        return true;
+    } else {
+        return false;
     }
-    return false;
+    const wall = getWallMeasurements(ray, canvas.height, playerPos);
+    if (!doorSide) {
+        wall.wallX -= door.offset;
+    }
+    renderFloorAndCeiling(canvas, stripe, wall, floor, playerPos, floorWallDist,
+        yFloor, yCeiling, yFloorMax, yCeilingMax, cell.floorTexture, cell.ceilingTexture);
+    renderWall(canvas, stripe, ray, wall, doorSide ? door.sideTexture : cell.wallTexture);
+    return true;
 }
