@@ -1,4 +1,4 @@
-import { PlayerInputs, advanceRay, attachKeyboard, attachMouse, attachTouch, checkDestination, createRay, getCameraPlane, getMapCell, updatePosition } from './demo1';
+import { PlayerInputs, advanceRay, attachKeyboard, attachMouse, attachTouch, createRay, getCameraPlane, getMapCell, setPlayerPos, updatePosition } from './demo1';
 import { getWallMeasurements, renderWall } from './demo3';
 import { getFloorMeasurements } from './demo5';
 import { renderFloorAndCeiling } from './demo6';
@@ -84,7 +84,7 @@ export async function initDemo7() {
         rotationSpeed: 0,
     };
 
-    const checkDest = (dest: Vec2) => checkDestination(dest, map, mapSize);
+    const setPos = (dest: Vec2) => setPlayerPos(playerPos, dest, map, mapSize);
 
     const textures: Partial<Record<string, ImageData>> = Object.fromEntries(await Promise.all(Object.entries({
         W: loadTextureData('/assets/content/misc/textures/wall.png'),
@@ -98,12 +98,12 @@ export async function initDemo7() {
     const [canvas, ctx] = initCanvas('canvas7');
     const aspectRatio = canvas.width / canvas.height;
     const repaint = attachRenderFunction(canvas, dt => {
-        updatePosition(dt, playerInputs, playerPos, playerDir, checkDest);
+        updatePosition(dt, playerInputs, playerPos, playerDir, setPos);
         renderEnv(canvas, ctx, aspectRatio, playerPos, playerDir);
     });
     attachKeyboard(canvas, playerInputs);
-    attachMouse(canvas, repaint, playerPos, playerDir, checkDest);
-    attachTouch(canvas, repaint, playerPos, playerDir, checkDest);
+    attachMouse(canvas, repaint, playerPos, playerDir, setPos);
+    attachTouch(canvas, repaint, playerPos, playerDir, setPos);
 }
 
 export function applyMapTextures(map: Cell[][], textures: Partial<Record<string, ImageData>>) {

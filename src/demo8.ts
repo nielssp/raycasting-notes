@@ -1,4 +1,4 @@
-import { PlayerInputs, Ray, advanceRay, attachKeyboard, attachMouse, attachTouch, checkDestination, createRay, getCameraPlane, getMapCell, getWallHeight, updatePosition } from './demo1';
+import { PlayerInputs, Ray, advanceRay, attachKeyboard, attachMouse, attachTouch, createRay, getCameraPlane, getMapCell, getWallHeight, setPlayerPos, updatePosition } from './demo1';
 import { getWallMeasurements, renderWall } from './demo3';
 import { FloorMeasurements, getFloorMeasurements } from './demo5';
 import { renderFloorAndCeiling } from './demo6';
@@ -65,7 +65,7 @@ export async function initDemo8() {
         rotationSpeed: 0,
     };
 
-    const checkDest = (dest: Vec2) => checkDestination(dest, map, mapSize);
+    const setPos = (dest: Vec2) => setPlayerPos(playerPos, dest, map, mapSize);
 
     const textures: Partial<Record<string, ImageData>> = Object.fromEntries(await Promise.all(Object.entries({
         W: loadTextureData('/assets/content/misc/textures/wall.png'),
@@ -81,11 +81,11 @@ export async function initDemo8() {
     const [canvas, ctx] = initCanvas('canvas8');
     const aspectRatio = canvas.width / canvas.height;
     const repaint = attachRenderFunction(canvas, dt => {
-        updatePosition(dt, playerInputs, playerPos, playerDir, checkDest);
+        updatePosition(dt, playerInputs, playerPos, playerDir, setPos);
         updateAnimations(animations, dt);
         renderEnv(canvas, ctx, aspectRatio, playerPos, playerDir)
     });
-    attachInputs(canvas, aspectRatio, playerInputs, repaint, playerPos, playerDir, checkDest, animations);
+    attachInputs(canvas, aspectRatio, playerInputs, repaint, playerPos, playerDir, setPos, animations);
 }
 
 export function applyMapTextures(map: Cell[][], textures: Partial<Record<string, ImageData>>) {
@@ -114,12 +114,12 @@ export function attachInputs(
     repaint: () => void,
     playerPos: Vec2,
     playerDir: Vec2,
-    checkDest: (dest: Vec2) => boolean,
+    setPos: (dest: Vec2) => void,
     animations: ((dt: number) => boolean)[],
 ) {
     attachKeyboard(canvas, playerInputs);
-    attachMouse(canvas, repaint, playerPos, playerDir, checkDest);
-    attachTouch(canvas, repaint, playerPos, playerDir, checkDest);
+    attachMouse(canvas, repaint, playerPos, playerDir, setPos);
+    attachTouch(canvas, repaint, playerPos, playerDir, setPos);
     attachUseKey(canvas, aspectRatio, playerPos, playerDir, animations);
 }
 

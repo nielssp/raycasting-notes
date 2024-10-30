@@ -1,4 +1,4 @@
-import { PlayerInputs, advanceRay, checkDestination, createRay, getCameraPlane, getMapCell, updatePosition } from './demo1';
+import { PlayerInputs, advanceRay, createRay, getCameraPlane, getMapCell, setPlayerPos, updatePosition } from './demo1';
 import { getBrightness } from './demo2';
 import { getWallMeasurements, renderWall, textureSize } from './demo3';
 import { getFloorMeasurements } from './demo5';
@@ -24,7 +24,7 @@ export async function initDemo9() {
         rotationSpeed: 0,
     };
 
-    const checkDest = (dest: Vec2) => checkDestination(dest, map, mapSize);
+    const setPos = (dest: Vec2) => setPlayerPos(playerPos, dest, map, mapSize);
 
     const textures: Partial<Record<string, ImageData>> = Object.fromEntries(await Promise.all(Object.entries({
         W: loadTextureData('/assets/content/misc/textures/wall.png'),
@@ -45,13 +45,13 @@ export async function initDemo9() {
     const [canvas, ctx] = initCanvas('canvas9');
     const aspectRatio = canvas.width / canvas.height;
     const repaint = attachRenderFunction(canvas, dt => {
-        updatePosition(dt, playerInputs, playerPos, playerDir, checkDest);
+        updatePosition(dt, playerInputs, playerPos, playerDir, setPos);
         updateAnimations(animations, dt);
         const cameraPlane = getCameraPlane(playerDir);
         const zBuffer = renderEnv(canvas, ctx, aspectRatio, playerPos, playerDir, cameraPlane)
         renderSprites(canvas, ctx, aspectRatio, sprites, zBuffer, playerPos, playerDir, cameraPlane);
     });
-    attachInputs(canvas, aspectRatio, playerInputs, repaint, playerPos, playerDir, checkDest, animations);
+    attachInputs(canvas, aspectRatio, playerInputs, repaint, playerPos, playerDir, setPos, animations);
 }
 
 export function createSprite(pos: Vec2, texture: ImageData): Sprite {

@@ -1,4 +1,4 @@
-import { PlayerInputs, advanceRay, attachKeyboard, attachMouse, attachTouch, checkDestination, createRay, getCameraPlane, getMapCell, map, mapSize, updatePosition } from './demo1';
+import { PlayerInputs, advanceRay, attachKeyboard, attachMouse, attachTouch, createRay, getCameraPlane, getMapCell, map, mapSize, setPlayerPos, updatePosition } from './demo1';
 import { WallMeasurements, getWallMeasurements, renderWall } from './demo3';
 import { FloorMeasurements, getFloorMeasurements, mapFloorTexture, renderFloor } from './demo5';
 import { Vec2, attachRenderFunction, initCanvas, loadTextureData } from './util';
@@ -14,7 +14,7 @@ export async function initDemo6() {
         rotationSpeed: 0,
     };
 
-    const checkDest = (dest: Vec2) => checkDestination(dest, map, mapSize);
+    const setPos = (dest: Vec2) => setPlayerPos(playerPos, dest, map, mapSize);
 
     const wallTexture: ImageData = await loadTextureData('/assets/content/misc/textures/wall.png');
     const floorTexture: ImageData = await loadTextureData('/assets/content/misc/textures/floor.png');
@@ -23,12 +23,12 @@ export async function initDemo6() {
     const [canvas, ctx] = initCanvas('canvas6');
     const aspectRatio = canvas.width / canvas.height;
     const repaint = attachRenderFunction(canvas, dt => {
-        updatePosition(dt, playerInputs, playerPos, playerDir, checkDest);
+        updatePosition(dt, playerInputs, playerPos, playerDir, setPos);
         renderEnv(canvas, ctx, aspectRatio, playerPos, playerDir, wallTexture, floorTexture, ceilingTexture);
     });
     attachKeyboard(canvas, playerInputs);
-    attachMouse(canvas, repaint, playerPos, playerDir, checkDest);
-    attachTouch(canvas, repaint, playerPos, playerDir, checkDest);
+    attachMouse(canvas, repaint, playerPos, playerDir, setPos);
+    attachTouch(canvas, repaint, playerPos, playerDir, setPos);
 }
 
 export function renderEnv(

@@ -1,4 +1,4 @@
-import { PlayerInputs, Ray, advanceRay, attachKeyboard, attachMouse, attachTouch, checkDestination, createRay, getCameraPlane, getMapCell, getWallHeight, map, mapSize, updatePosition } from './demo1';
+import { PlayerInputs, Ray, advanceRay, attachKeyboard, attachMouse, attachTouch, createRay, getCameraPlane, getMapCell, getWallHeight, map, mapSize, setPlayerPos, updatePosition } from './demo1';
 import { Vec2, attachRenderFunction, initCanvas } from './util';
 
 export function initDemo2() {
@@ -12,19 +12,19 @@ export function initDemo2() {
         rotationSpeed: 0,
     };
 
-    const checkDest = (dest: Vec2) => checkDestination(dest, map, mapSize);
+    const setPos = (dest: Vec2) => setPlayerPos(playerPos, dest, map, mapSize);
 
     const [canvas, ctx] = initCanvas('canvas2');
     const aspectRatio = canvas.width / canvas.height;
     const sky = createSky(canvas, ctx);
     const repaint = attachRenderFunction(canvas, dt => {
-        updatePosition(dt, playerInputs, playerPos, playerDir, checkDest);
+        updatePosition(dt, playerInputs, playerPos, playerDir, setPos);
         renderBackground(canvas, ctx, sky);
         renderEnv(canvas, ctx, aspectRatio, playerPos, playerDir);
     });
     attachKeyboard(canvas, playerInputs);
-    attachMouse(canvas, repaint, playerPos, playerDir, checkDest);
-    attachTouch(canvas, repaint, playerPos, playerDir, checkDest);
+    attachMouse(canvas, repaint, playerPos, playerDir, setPos);
+    attachTouch(canvas, repaint, playerPos, playerDir, setPos);
 }
 
 export function createSky(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) {

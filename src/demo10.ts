@@ -4,7 +4,7 @@ import { getFloorMeasurements } from './demo5';
 import { renderFloorAndCeiling } from './demo6';
 import { Door, applyMapTextures, attachInputs, renderDoor, updateAnimations } from './demo8';
 import { Sprite, createSprite, renderSprites } from './demo9';
-import { Vec2, add2, attachRenderFunction, initCanvas, loadTextureData, sub2 } from './util';
+import { Vec2, add2, attachRenderFunction, initCanvas, loadTextureData, set2, sub2 } from './util';
 
 export interface Cell {
     solid: boolean;
@@ -20,10 +20,10 @@ export interface Cell {
 
 export const map: Cell[][] = [
     'WWWWWWWWWWWWWWWWWWWW',
-    'W      WWWW        W',
-    'W       WW         W',
-    'W      WWWWWWW     W',
-    'W     WWWWWWWW     W',
+    'W      WWWWWWWW    W',
+    'W      WWWWWWWW    W',
+    'W     WWWWWWWWWWW  W',
+    'W                  W',
     'W                  W',
     'WWWWWWWWWWWWWWWWWWWW',
 ].map(row => row.split('').map(wallType => {
@@ -38,8 +38,10 @@ export const map: Cell[][] = [
         ceilingType: 'C',
     };
 }));
-map[2][7].portal = {x: 10, y: 2};
-map[2][10].portal = {x: 7, y: 2};
+map[1][6].portal = {x: 16, y: 1};
+map[2][6].portal = {x: 16, y: 2};
+map[1][15].portal = {x: 5, y: 1};
+map[2][15].portal = {x: 5, y: 2};
 export const mapSize: Vec2 = {
     x: map[0].length,
     y: map.length,
@@ -56,7 +58,7 @@ export async function initDemo10() {
         rotationSpeed: 0,
     };
 
-    const checkDest = (dest: Vec2) => checkDestination(dest, map, mapSize);
+    const setPos = (dest: Vec2) => setPlayerPos(playerPos, dest, map, mapSize);
 
     const textures: Partial<Record<string, ImageData>> = Object.fromEntries(await Promise.all(Object.entries({
         W: loadTextureData('/assets/content/misc/textures/wall.png'),
@@ -77,13 +79,33 @@ export async function initDemo10() {
     const [canvas, ctx] = initCanvas('canvas10');
     const aspectRatio = canvas.width / canvas.height;
     const repaint = attachRenderFunction(canvas, dt => {
-        updatePosition(dt, playerInputs, playerPos, playerDir, checkDest);
+        updatePosition(dt, playerInputs, playerPos, playerDir, setPos);
         updateAnimations(animations, dt);
         const cameraPlane = getCameraPlane(playerDir);
         const zBuffer = renderEnv(canvas, ctx, aspectRatio, playerPos, playerDir, cameraPlane)
         renderSprites(canvas, ctx, aspectRatio, sprites, zBuffer, playerPos, playerDir, cameraPlane);
     });
-    attachInputs(canvas, aspectRatio, playerInputs, repaint, playerPos, playerDir, checkDest, animations);
+    attachInputs(canvas, aspectRatio, playerInputs, repaint, playerPos, playerDir, setPos, animations);
+}
+
+export function setPlayerPos(
+    playerPos: Vec2,
+    newPlayerPos: Vec2,
+    map: Cell[][],
+    mapSize: Vec2,
+) {
+    if (checkDestination(newPlayerPos, map, mapSize)) {
+        const currentMapPos = {x: playerPos.x | 0, y: playerPos.y | 0};
+        const newMapPos = {x: newPlayerPos.x | 0, y: newPlayerPos.y | 0};
+        if (currentMapPos.x !== newMapPos.x || currentMapPos.y !== newMapPos.y) {
+            const cell = getMapCell(map, newMapPos, mapSize);
+            if (cell?.portal) {
+                set2(playerPos, add2(newPlayerPos, sub2(cell.portal, newMapPos)));
+                return;
+            }
+        }
+        set2(playerPos, newPlayerPos);
+    }
 }
 
 export function renderEnv(

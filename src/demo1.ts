@@ -56,28 +56,39 @@ export function initDemo1() {
         rotationSpeed: 0,
     };
 
-    const checkDest = (dest: Vec2) => checkDestination(dest, map, mapSize);
+    const setPos = (dest: Vec2) => setPlayerPos(playerPos, dest, map, mapSize);
 
     const [canvas, ctx] = initCanvas('canvas1');
     const aspectRatio = canvas.width / canvas.height;
     const repaint = attachRenderFunction(canvas, dt => {
-        updatePosition(dt, playerInputs, playerPos, playerDir, checkDest);
+        updatePosition(dt, playerInputs, playerPos, playerDir, setPos);
         renderBackground(canvas, ctx);
         renderEnv(canvas, ctx, aspectRatio, playerPos, playerDir);
     });
     attachKeyboard(canvas, playerInputs);
-    attachMouse(canvas, repaint, playerPos, playerDir, checkDest);
-    attachTouch(canvas, repaint, playerPos, playerDir, checkDest);
+    attachMouse(canvas, repaint, playerPos, playerDir, setPos);
+    attachTouch(canvas, repaint, playerPos, playerDir, setPos);
 }
 
 // Position handling
+
+export function setPlayerPos(
+    playerPos: Vec2,
+    newPlayerPos: Vec2,
+    map: Cell[][],
+    mapSize: Vec2,
+) {
+    if (checkDestination(newPlayerPos, map, mapSize)) {
+        set2(playerPos, newPlayerPos);
+    }
+}
 
 export function updatePosition(
     dt: number,
     playerInputs: PlayerInputs,
     playerPos: Vec2,
     playerDir: Vec2,
-    checkDest: (dest: Vec2) => boolean,
+    setPos: (dest: Vec2) => void,
 ) {
     if (playerInputs.moveForward || playerInputs.moveBackward) {
         // Move forward or backward by adding or subtracting the direction vector multiplied by
@@ -91,9 +102,7 @@ export function updatePosition(
             newPos.x -= moveSpeed * playerDir.x;
             newPos.y -= moveSpeed * playerDir.y;
         }
-        if (checkDest(newPos)) {
-            set2(playerPos, newPos);
-        }
+        setPos(newPos);
     }
 
     if (playerInputs.turnLeft || playerInputs.turnRight) {
@@ -167,7 +176,7 @@ export function attachMouse(
     repaint: () => void,
     playerPos: Vec2,
     playerDir: Vec2,
-    checkDest: (dest: Vec2) => boolean,
+    setPos: (dest: Vec2) => void,
 ) {
     let dragging = false;
     canvas.addEventListener('mousedown', () => {
@@ -181,9 +190,7 @@ export function attachMouse(
         // and down
         const moveSpeed = -0.005 * e.movementY;
         const newPos = add2(playerPos, mul2(moveSpeed, playerDir));
-        if (checkDest(newPos)) {
-            set2(playerPos, newPos);
-        }
+        setPos(newPos);
 
         // Rotate direction vector when moving mouse left and right
         const rotSpeed = 0.005 * e.movementX;
@@ -212,7 +219,7 @@ export function attachTouch(
     repaint: () => void,
     playerPos: Vec2,
     playerDir: Vec2,
-    checkDest: (dest: Vec2) => boolean,
+    setPos: (dest: Vec2) => void,
 ) {
     let touch: Touch | undefined;
     canvas.addEventListener('touchstart', e => {
@@ -238,9 +245,7 @@ export function attachTouch(
 
         const moveSpeed = 0.005 * movement.y;
         const newPos = add2(playerPos, mul2(moveSpeed, playerDir));
-        if (checkDest(newPos)) {
-            set2(playerPos, newPos);
-        }
+        setPos(newPos);
 
         const rotSpeed = -0.005 * movement.x;
         set2(playerDir, {
