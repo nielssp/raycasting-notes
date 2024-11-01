@@ -1,6 +1,6 @@
 import { PlayerInputs, Ray, advanceRay, attachKeyboard, attachMouse, attachTouch, createRay, getCameraPlane, getMapCell, map, mapSize, setPlayerPos, updatePosition } from './demo1';
 import { createSky, getBrightness, renderBackground } from './demo2';
-import { WallMeasurements, getWallMeasurements, renderWall, textureSize } from './demo3';
+import { getWallMeasurements, renderWall, textureSize } from './demo3';
 import { Vec2, attachRenderFunction, initCanvas, loadTextureData } from './util';
 
 export async function initDemo5() {
@@ -58,7 +58,7 @@ export function renderEnv(
             const wall = getWallMeasurements(ray, canvas.height, playerPos);
             const cellY = (canvas.height - wall.wallHeight) * 0.5;
             const floorCellY = Math.ceil(cellY);
-            const floor = getFloorMeasurements(ray, wall);
+            const floor = getFloorMeasurements(ray, wall.wallX);
             yFloor = renderFloor(canvas, stripe, floor, floorCellY, playerPos, yFloor, yFloorMax, ray.perpWallDist, floorTexture);
 
             if (cell.solid) {
@@ -75,19 +75,19 @@ export interface FloorMeasurements {
     floorYWall: number;
 }
 
-export function getFloorMeasurements(ray: Ray, wall: WallMeasurements): FloorMeasurements {
+export function getFloorMeasurements(ray: Ray, wallX: number): FloorMeasurements {
     let floorXWall: number, floorYWall: number;
     if (ray.side === 0 && ray.rayDir.x > 0) {
         floorXWall = ray.mapPos.x;
-        floorYWall = ray.mapPos.y + wall.wallX;
+        floorYWall = ray.mapPos.y + wallX;
     } else if (ray.side === 0 && ray.rayDir.x < 0) {
         floorXWall = ray.mapPos.x + 1;
-        floorYWall = ray.mapPos.y + wall.wallX;
+        floorYWall = ray.mapPos.y + wallX;
     } else if (ray.side === 1 && ray.rayDir.y > 0) {
-        floorXWall = ray.mapPos.x + wall.wallX;
+        floorXWall = ray.mapPos.x + wallX;
         floorYWall = ray.mapPos.y;
     } else {
-        floorXWall = ray.mapPos.x + wall.wallX;
+        floorXWall = ray.mapPos.x + wallX;
         floorYWall = ray.mapPos.y + 1;
     }
     return {floorXWall, floorYWall};

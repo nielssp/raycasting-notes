@@ -51,7 +51,7 @@ export async function initDemo9() {
         const zBuffer = renderEnv(canvas, ctx, aspectRatio, playerPos, playerDir, cameraPlane)
         renderSprites(canvas, ctx, aspectRatio, sprites, zBuffer, playerPos, playerDir, cameraPlane);
     });
-    attachInputs(canvas, aspectRatio, playerInputs, repaint, playerPos, playerDir, setPos, animations);
+    attachInputs(canvas, aspectRatio, playerInputs, repaint, playerPos, playerDir, setPos, map, mapSize, animations);
 }
 
 export function createSprite(pos: Vec2, texture: ImageData): Sprite {
@@ -92,7 +92,7 @@ export function renderEnv(
                 break;
             }
             const wall = getWallMeasurements(ray, canvas.height, playerPos);
-            const floor = getFloorMeasurements(ray, wall);
+            const floor = getFloorMeasurements(ray, wall.wallX);
             [yFloor, yCeiling] = renderFloorAndCeiling(canvas, stripe, wall, floor, playerPos, ray.perpWallDist,
                 yFloor, yCeiling, yFloorMax, yCeilingMax, floorCell?.floorTexture, floorCell?.ceilingTexture);
 

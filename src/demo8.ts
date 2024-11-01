@@ -85,7 +85,7 @@ export async function initDemo8() {
         updateAnimations(animations, dt);
         renderEnv(canvas, ctx, aspectRatio, playerPos, playerDir)
     });
-    attachInputs(canvas, aspectRatio, playerInputs, repaint, playerPos, playerDir, setPos, animations);
+    attachInputs(canvas, aspectRatio, playerInputs, repaint, playerPos, playerDir, setPos, map, mapSize, animations);
 }
 
 export function applyMapTextures(map: Cell[][], textures: Partial<Record<string, ImageData>>) {
@@ -115,12 +115,14 @@ export function attachInputs(
     playerPos: Vec2,
     playerDir: Vec2,
     setPos: (dest: Vec2) => void,
+    map: Cell[][],
+    mapSize: Vec2,
     animations: ((dt: number) => boolean)[],
 ) {
     attachKeyboard(canvas, playerInputs);
     attachMouse(canvas, repaint, playerPos, playerDir, setPos);
     attachTouch(canvas, repaint, playerPos, playerDir, setPos);
-    attachUseKey(canvas, aspectRatio, playerPos, playerDir, animations);
+    attachUseKey(canvas, aspectRatio, playerPos, playerDir, map, mapSize, animations);
 }
 
 export function attachUseKey(
@@ -128,12 +130,14 @@ export function attachUseKey(
     aspectRatio: number,
     playerPos: Vec2,
     playerDir: Vec2,
+    map: Cell[][],
+    mapSize: Vec2,
     animations: ((dt: number) => boolean)[],
 ) {
     canvas.addEventListener('keypress', e => {
         if (e.key === 'e') {
             e.preventDefault();
-            const wall = castRayToWall(canvas, aspectRatio, playerPos, playerDir, Math.floor(canvas.width / 2));
+            const wall = castRayToWall(canvas, aspectRatio, playerPos, playerDir, Math.floor(canvas.width / 2), map, mapSize);
             if (wall?.cell.door && wall.dist < 1.5) {
                 openDoor(wall.pos, wall.cell, wall.cell.door, playerPos, animations);
             }
@@ -144,7 +148,7 @@ export function attachUseKey(
         const x = Math.floor((e.clientX - rect.left) / rect.width * canvas.width);
         const y = Math.floor((e.clientY - rect.top) / rect.height * canvas.height);
         if (x >= 0 && x < canvas.width) {
-            const wall = castRayToPoint(canvas, aspectRatio, playerPos, playerDir, x, y);
+            const wall = castRayToPoint(canvas, aspectRatio, playerPos, playerDir, x, y, map, mapSize);
             if (wall?.cell.door && wall.dist < 1.5) {
                 openDoor(wall.pos, wall.cell, wall.cell.door, playerPos, animations);
             }
@@ -157,7 +161,7 @@ export function attachUseKey(
             const x = Math.floor((touch.clientX - rect.left) / rect.width * canvas.width);
             const y = Math.floor((touch.clientY - rect.top) / rect.height * canvas.height);
             if (x >= 0 && x < canvas.width) {
-                const wall = castRayToPoint(canvas, aspectRatio, playerPos, playerDir, x, y);
+                const wall = castRayToPoint(canvas, aspectRatio, playerPos, playerDir, x, y, map, mapSize);
                 if (wall?.cell.door && wall.dist < 1.5) {
                     openDoor(wall.pos, wall.cell, wall.cell.door, playerPos, animations);
                 }
@@ -224,12 +228,14 @@ export function castRayToPoint(
     playerDir: Vec2,
     x: number,
     y: number,
+    map: Cell[][],
+    mapSize: Vec2,
 ): {
     pos: Vec2;
     cell: Cell;
     dist: number;
 } | undefined {
-    const cell = castRayToWall(canvas, aspectRatio, playerPos, playerDir, x);
+    const cell = castRayToWall(canvas, aspectRatio, playerPos, playerDir, x, map, mapSize);
     if (cell) {
         const {wallHeight, wallY} = getWallHeight(canvas.height, cell.dist);
         if (y >= wallY && y < wallY + wallHeight) {
@@ -245,6 +251,8 @@ export function castRayToWall(
     playerPos: Vec2,
     playerDir: Vec2,
     x: number,
+    map: Cell[][],
+    mapSize: Vec2,
 ): {
     pos: Vec2;
     cell: Cell;
@@ -294,7 +302,7 @@ export function renderEnv(
                 break;
             }
             const wall = getWallMeasurements(ray, canvas.height, playerPos);
-            const floor = getFloorMeasurements(ray, wall);
+            const floor = getFloorMeasurements(ray, wall.wallX);
             [yFloor, yCeiling] = renderFloorAndCeiling(canvas, stripe, wall, floor, playerPos, ray.perpWallDist,
                 yFloor, yCeiling, yFloorMax, yCeilingMax, floorCell?.floorTexture, floorCell?.ceilingTexture);
 

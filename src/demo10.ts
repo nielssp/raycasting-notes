@@ -15,7 +15,7 @@ export interface Cell {
     wallTexture?: ImageData;
     floorTexture?: ImageData;
     ceilingTexture?: ImageData;
-    portal?: Vec2,
+    portal?: Vec2;
 }
 
 export const map: Cell[][] = [
@@ -85,7 +85,7 @@ export async function initDemo10() {
         const zBuffer = renderEnv(canvas, ctx, aspectRatio, playerPos, playerDir, cameraPlane)
         renderSprites(canvas, ctx, aspectRatio, sprites, zBuffer, playerPos, playerDir, cameraPlane);
     });
-    attachInputs(canvas, aspectRatio, playerInputs, repaint, playerPos, playerDir, setPos, animations);
+    attachInputs(canvas, aspectRatio, playerInputs, repaint, playerPos, playerDir, setPos, map, mapSize, animations);
 }
 
 export function setPlayerPos(
@@ -136,7 +136,7 @@ export function renderEnv(
                 break;
             }
             const wall = getWallMeasurements(ray, canvas.height, offsetPlayerPos);
-            const floor = getFloorMeasurements(ray, wall);
+            const floor = getFloorMeasurements(ray, wall.wallX);
             [yFloor, yCeiling] = renderFloorAndCeiling(canvas, stripe, wall, floor, offsetPlayerPos, ray.perpWallDist,
                 yFloor, yCeiling, yFloorMax, yCeilingMax, floorCell?.floorTexture, floorCell?.ceilingTexture);
 

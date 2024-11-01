@@ -58,7 +58,7 @@ export function renderEnv(
                 break;
             }
             const wall = getWallMeasurements(ray, canvas.height, playerPos);
-            const floor = getFloorMeasurements(ray, wall);
+            const floor = getFloorMeasurements(ray, wall.wallX);
             [yFloor, yCeiling] = renderFloorAndCeiling(canvas, stripe, wall, floor, playerPos, ray.perpWallDist,
                 yFloor, yCeiling, yFloorMax, yCeilingMax, floorTexture, ceilingTexture);
 
