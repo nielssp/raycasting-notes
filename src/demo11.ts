@@ -143,7 +143,7 @@ export async function initDemo11() {
     const setPos = (dest: Vec2) => setPlayerPos(playerPos, dest, map, mapSize);
 
     const textures: Partial<Record<string, ImageData>> = Object.fromEntries(await Promise.all(Object.entries({
-        W: loadTextureData('/assets/content/misc/textures/wall.png'),
+        W: loadTextureData('/assets/content/misc/textures/wall2.png'),
         F: loadTextureData('/assets/content/misc/textures/floor.png'),
         C: loadTextureData('/assets/content/misc/textures/ceiling.png'),
         D: loadTextureData('/assets/content/misc/textures/door.png'),
@@ -168,6 +168,7 @@ export async function initDemo11() {
     sprites.push(createSprite({x: 7.5, y: 9.5, z: 2}, barrelTexture));
 
     const [canvas, ctx] = initCanvas('canvas11');
+    const zBuffer = Array(canvas.width * canvas.height);
     const aspectRatio = canvas.width / canvas.height;
     const repaint = attachRenderFunction(canvas, dt => {
         updatePosition(dt, playerInputs, playerPos, playerDir, setPos);
@@ -175,8 +176,8 @@ export async function initDemo11() {
         applyGravity(playerPos, playerVel, map, dt);
         const cameraPlane = getCameraPlane(playerDir);
         ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, canvas.width, canvas.height)
-        const zBuffer = renderEnv(canvas, ctx, aspectRatio, playerPos, playerDir, cameraPlane)
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        renderEnv(canvas, ctx, aspectRatio, playerPos, playerDir, cameraPlane, zBuffer)
         renderSprites(canvas, ctx, aspectRatio, sprites, zBuffer, playerPos, playerDir, cameraPlane);
     });
     attachInputs(canvas, aspectRatio, playerInputs, repaint, playerPos, playerDir, playerVel, setPos, map, mapSize, animations);
@@ -279,8 +280,8 @@ export function openDoor(
     door.active = true;
     animations.push(dt => {
         door.offset += dt;
-        if (door.offset >= 0.984375) {
-            door.offset = 0.984375;
+        if (door.offset >= 62/64) {
+            door.offset = 62/64;
             door.active = false;
             door.open = true;
             setTimeout(() => closeDoor(mapPos, door, playerPos, animations), 3000);
@@ -442,8 +443,8 @@ export function renderEnv(
     playerPos: Vec3,
     playerDir: Vec2,
     cameraPlane: Vec2,
-): number[] {
-    const zBuffer = Array(canvas.width * canvas.height);
+    zBuffer: number[],
+) {
     for (let x = 0; x < canvas.width; x++) {
         const zBufferOffset = x * canvas.height;
         const ray = createRay(canvas, aspectRatio, playerPos, playerDir, x, cameraPlane);
@@ -486,7 +487,6 @@ export function renderEnv(
         ctx.putImageData(stripe, x, 0);
         zBuffer[x] = ray.perpWallDist;
     }
-    return zBuffer;
 }
 
 export interface WallMeasurements {
@@ -528,36 +528,38 @@ export function renderWall(
     const ceilingY = Math.ceil(wallY + (cell.cellHeight - cell.ceilingHeight) * wall.heightMultiplier);
     const floorY = Math.ceil(wallY + (cell.cellHeight - cell.floorHeight) * wall.heightMultiplier);
 
-    const brightness = getBrightness(ray.perpWallDist, ray.side);
-
-    let texX: number = wall.wallX * textureSize.x | 0;
     const yStart = Math.max(wallY, yCeiling);
     const yEnd = Math.min(wallY + wallHeight + 1, canvas.height - yFloor);
 
-    const step = textureSize.y * ray.perpWallDist / canvas.height;
-    let texPos = wallY < yStart ? (yStart - wallY) * step : 0;
-    texPos += (1 - cell.cellHeight + (cell.cellHeight | 0)) * textureSize.y;
+    if (yStart <= ceilingY || yEnd >= floorY) {
+        const brightness = getBrightness(ray.perpWallDist, ray.side);
+        let texX: number = wall.wallX * textureSize.x | 0;
 
-    for (let y = yStart; y < yEnd; y++) {
-        const offset = y * 4;
-        const texY = texPos & (textureSize.y - 1);
-        texPos += step;
-        if (y > ceilingY && y < floorY) {
-            continue;
+        const step = textureSize.y * ray.perpWallDist / canvas.height;
+        let texPos = wallY < yStart ? (yStart - wallY) * step : 0;
+        texPos += (1 - cell.cellHeight + (cell.cellHeight | 0)) * textureSize.y;
+
+        for (let y = yStart; y < yEnd; y++) {
+            texPos += step;
+            if (y > ceilingY && y < floorY) {
+                continue;
+            }
+            const texY = texPos & (textureSize.y - 1);
+            const offset = y * 4;
+            if (wallTexture) {
+                const texOffset = (texY * textureSize.x + texX) * 4;
+                stripe.data[offset] = wallTexture.data[texOffset] * brightness;
+                stripe.data[offset + 1] = wallTexture.data[texOffset + 1] * brightness;
+                stripe.data[offset + 2] = wallTexture.data[texOffset + 2] * brightness;
+                stripe.data[offset + 3] = 255;
+            } else {
+                stripe.data[offset] = 0;
+                stripe.data[offset + 1] = 85 * brightness;
+                stripe.data[offset + 2] = 102 * brightness;
+                stripe.data[offset + 3] = 255;
+            }
+            zBuffer[zBufferOffset + y] = ray.perpWallDist;
         }
-        if (wallTexture) {
-            const texOffset = (texY * textureSize.x + texX) * 4;
-            stripe.data[offset] = wallTexture.data[texOffset] * brightness;
-            stripe.data[offset + 1] = wallTexture.data[texOffset + 1] * brightness;
-            stripe.data[offset + 2] = wallTexture.data[texOffset + 2] * brightness;
-            stripe.data[offset + 3] = 255;
-        } else {
-            stripe.data[offset] = 0;
-            stripe.data[offset + 1] = 85 * brightness;
-            stripe.data[offset + 2] = 102 * brightness;
-            stripe.data[offset + 3] = 255;
-        }
-        zBuffer[zBufferOffset + y] = ray.perpWallDist;
     }
     return [
         Math.max(yFloor, canvas.height - floorY),

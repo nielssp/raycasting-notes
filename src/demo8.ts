@@ -183,8 +183,8 @@ export function openDoor(
     door.active = true;
     animations.push(dt => {
         door.offset += dt;
-        if (door.offset >= 0.984375) {
-            door.offset = 0.984375;
+        if (door.offset >= 62/64) {
+            door.offset = 62/64;
             door.active = false;
             cell.solid = false;
             setTimeout(() => closeDoor(mapPos, cell, door, playerPos, animations), 3000);

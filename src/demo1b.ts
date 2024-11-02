@@ -9,7 +9,6 @@ export const map: Cell[][] = [
     'X     XX X',
     'X        X',
     'X     XXXX',
-    'XXXXXXXXXX',
 ].map(row => row.split('').map(cell => {
     return {
         solid: cell === 'X',
