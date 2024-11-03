@@ -58,13 +58,23 @@ export function attachRenderFunction(
     canvas: HTMLCanvasElement,
     onUpdate: (dt: number) => void,
 ): () => void {
+    const timings = Array(120);
+    let timingPtr = 0;
     let active = true;
     let previousTime: number = 0;
     function update(time: number) {
         const dt = (time - previousTime) / 1000;
         previousTime = time;
 
+        const start = performance.now();
         onUpdate(dt);
+
+        timings[timingPtr++] = performance.now() - start;
+        if (timingPtr >= timings.length) {
+            const avg = timings.reduce((a, b) => a + b) / timings.length;
+            console.log(`Average frame time: ${avg}ms (~${Math.floor(1000 / avg)} fps)`);
+            timingPtr = 0;
+        }
 
         if (document.activeElement === canvas) {
             requestAnimationFrame(update);
@@ -102,7 +112,6 @@ export function loadTextureData(src: string): Promise<ImageData> {
                 const context = canvas.getContext('2d')!;
                 canvas.width = img.width;
                 canvas.height = img.height;
-                //context.transform(0, 1, 1, 0, 0, 0);
                 context.drawImage(img, 0, 0);
                 resolve(context.getImageData(0, 0, canvas.width, canvas.height));
             };

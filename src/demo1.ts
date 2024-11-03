@@ -346,7 +346,7 @@ export function createRay(
     const rayDir = add2(playerDir, mul2(cameraX, cameraPlane));
     // The initial map position is the integer parts of the player position
     // vector
-    const mapPos = {x: playerPos.x | 0, y: playerPos.y | 0};
+    const mapPos = {x: Math.floor(playerPos.x), y: Math.floor(playerPos.y)};
     const deltaDist = {
         x: Math.abs(1 / rayDir.x),
         y: Math.abs(1 / rayDir.y),

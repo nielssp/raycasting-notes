@@ -1,134 +1,19 @@
-import { PlayerInputs, Ray, advanceRay, attachKeyboard, attachMouse, attachTouch, createRay, getCameraPlane, getMapCell, updatePosition } from './demo1';
+import { PlayerInputs, Ray, advanceRay, createRay, getCameraPlane, getMapCell, updatePosition } from './demo1';
+import { Cell, Door, Sprite, WallMeasurements, applyGravity, applyMapTextures, attachInputs, createSprite, getWallMeasurements, map as map11, mapSize, setPlayerPos } from './demo11';
 import { getBrightness } from './demo2';
 import { textureSize } from './demo3';
 import { FloorMeasurements, getFloorMeasurements } from './demo5';
 import { doorEnd, doorStart, updateAnimations } from './demo8';
 import { Vec2, Vec3, attachRenderFunction, initCanvas, loadTextureData, sub2 } from './util';
 
-export interface Door {
-    doorTexture?: ImageData;
-    sideTexture?: ImageData;
-    offset: number;
-    active: boolean;
-    open: boolean;
-}
+const map: Cell[][] = map11.map(r => r.map(c => {
+    return {
+        ...c,
+        door: c.door && {...c.door},
+    };
+}));
 
-export interface Cell {
-    door?: Door;
-    wallType: string;
-    floorType: string;
-    ceilingType: string;
-    wallTexture?: ImageData;
-    floorTexture?: ImageData;
-    ceilingTexture?: ImageData;
-    cellHeight: number;
-    floorHeight: number;
-    ceilingHeight: number;
-}
-
-export interface Sprite {
-    pos: Vec3;
-    texture: ImageData;
-    relPos: Vec2;
-    relDist: number;
-}
-
-const walls = [
-    'WWWWWWWWWWW',
-    'WWWWWWWWWWW',
-    'WWWWWWWWWWW',
-    'WWWWWWWWWWW',
-    'WWWWWWWWWWW',
-    'WWWWWCWWWWW',
-    'WWWWWWWWWWW',
-    'WWWWWWWWWWW',
-    'WWWWWWWWWWW',
-    'WWWWWWWWWWW',
-    'WWWWWWWWWWW',
-];
-
-const floors = [
-    'WWWWWWWWWWW',
-    'WFFFFFFFFFW',
-    'WFFFFFFFFFW',
-    'WFFFFFFFFFW',
-    'WFFFFFFFFFW',
-    'WFFFFCFFFFW',
-    'WFFFFFFFFFW',
-    'WFFFFFFFFFW',
-    'WFFFFFFFFFW',
-    'WFFFFFFFFFW',
-    'WFFFFFFFFFW',
-];
-
-const ceilings = [
-    '           ',
-    '           ',
-    '           ',
-    '           ',
-    '           ',
-    '           ',
-    'CCWCCCCWCCC',
-    'CCCCCCCCCCC',
-    'CCCCCCCCCCC',
-    'CCCCCCCCCCC',
-    'CCCCCCCCCCC',
-];
-
-const floorHeights = [
-    'JJJJJJJJJJJ',
-    'J888888888J',
-    'J889ABCD88J',
-    'J888888E88J',
-    'J888888F88J',
-    'J8888C8G88J',
-    'ZZ8ZZZZGZZZ',
-    'Z88888GGJJZ',
-    'Z88888GGJJZ',
-    'Z88888GGJJZ',
-    'ZZZZZZZZZZZ',
-];
-
-const ceilingHeights = [
-    'ZZZZZZZZZZZ',
-    'ZZZZZZZZZZZ',
-    'ZZZZZZZZZZZ',
-    'ZZZZZZZZZZZ',
-    'ZZZZZZZZZZZ',
-    'ZZZZZZZZZZZ',
-    'ZSGSSSSOSSZ',
-    'ZUUUUUUUUUZ',
-    'ZUUUUUUUUUZ',
-    'ZUUUUUUUUUZ',
-    'ZZZZZZZZZZZ',
-];
-
-const maxStepSize = 1/8;
-const playerHeight = 5/8;
-const gravity = 9.82;
-
-export const map: Cell[][] = walls.map((row, y) => {
-    const floorTypes = floors[y].split('');
-    const ceilingTypes = ceilings[y].split('');
-    const floorHeightRow = floorHeights[y].split('');
-    const ceilingHeightRow = ceilingHeights[y].split('');
-    return row.split('').map((wallType, x) => {
-        return {
-            wallType,
-            floorType: floorTypes[x],
-            ceilingType: ceilingTypes[x],
-            cellHeight: 4,
-            floorHeight: parseInt(floorHeightRow[x], 36) / 8,
-            ceilingHeight: parseInt(ceilingHeightRow[x], 36) / 8,
-        };
-    })
-});
-export const mapSize: Vec2 = {
-    x: map[0].length,
-    y: map.length,
-};
-
-export async function initDemo11() {
+export async function initDemo12() {
     const playerPos: Vec3 = {x: 2, y: 3, z: 1};
     const playerDir: Vec2 = {x: 1, y: 0};
     const playerVel: Vec3 = {x: 0, y: 0, z: 0};
@@ -143,11 +28,11 @@ export async function initDemo11() {
     const setPos = (dest: Vec2) => setPlayerPos(playerPos, dest, map, mapSize);
 
     const textures: Partial<Record<string, ImageData>> = Object.fromEntries(await Promise.all(Object.entries({
-        W: loadTextureData('/assets/content/misc/textures/wall2.png'),
-        F: loadTextureData('/assets/content/misc/textures/floor.png'),
-        C: loadTextureData('/assets/content/misc/textures/ceiling.png'),
-        D: loadTextureData('/assets/content/misc/textures/door.png'),
-        d: loadTextureData('/assets/content/misc/textures/door-side.png'),
+        W: loadRotatedTextureData('/assets/content/misc/textures/wall2.png'),
+        F: loadRotatedTextureData('/assets/content/misc/textures/floor.png'),
+        C: loadRotatedTextureData('/assets/content/misc/textures/ceiling.png'),
+        D: loadRotatedTextureData('/assets/content/misc/textures/door.png'),
+        d: loadRotatedTextureData('/assets/content/misc/textures/door-side.png'),
     }).map(async ([k, p]) => [k, await p])));
     applyMapTextures(map, textures);
 
@@ -162,278 +47,49 @@ export async function initDemo11() {
     const animations: ((dt: number) => boolean)[] = [];
 
     const sprites: Sprite[] = [];
-    const barrelTexture = await loadTextureData('/assets/content/misc/textures/barrel.png');
+    const barrelTexture = await loadRotatedTextureData('/assets/content/misc/textures/barrel.png');
     sprites.push(createSprite({x: 3, y: 4, z: 1}, barrelTexture));
     sprites.push(createSprite({x: 4, y: 3.75, z: 1}, barrelTexture));
     sprites.push(createSprite({x: 7.5, y: 9.5, z: 2}, barrelTexture));
 
-    const [canvas, ctx] = initCanvas('canvas11');
+    const [canvas, ctx] = initCanvas('canvas12');
+    ctx.transform(0, 1, 1, 0, 0, 0);
     const zBuffer = Array(canvas.width * canvas.height);
     const aspectRatio = canvas.width / canvas.height;
+
+    const rotated = document.createElement('canvas');
+    rotated.width = canvas.height;
+    rotated.height = canvas.width;
+    const rotatedCtx = rotated.getContext('2d')!;
+    rotatedCtx.transform(0, 1, 1, 0, 0, 0);
+
     const repaint = attachRenderFunction(canvas, dt => {
         updatePosition(dt, playerInputs, playerPos, playerDir, setPos);
         updateAnimations(animations, dt);
         applyGravity(playerPos, playerVel, map, dt);
         const cameraPlane = getCameraPlane(playerDir);
-        ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        renderEnv(canvas, ctx, aspectRatio, playerPos, playerDir, cameraPlane, zBuffer)
-        renderSprites(canvas, ctx, aspectRatio, sprites, zBuffer, playerPos, playerDir, cameraPlane);
+        rotatedCtx.fillStyle = '#000';
+        rotatedCtx.fillRect(0, 0, canvas.width, canvas.height);
+        renderEnv(canvas, rotatedCtx, aspectRatio, playerPos, playerDir, cameraPlane, zBuffer)
+        renderSprites(canvas, rotatedCtx, aspectRatio, sprites, zBuffer, playerPos, playerDir, cameraPlane);
+        ctx.drawImage(rotated, 0, 0, rotated.width, rotated.height, 0, 0, rotated.width, rotated.height);
     });
     attachInputs(canvas, aspectRatio, playerInputs, repaint, playerPos, playerDir, playerVel, setPos, map, mapSize, animations);
 }
 
-export function createSprite(pos: Vec3, texture: ImageData): Sprite {
-    return {
-        pos,
-        texture,
-        relPos: {
-            x: 0,
-            y: 0,
-        },
-        relDist: 0,
-    };
-}
-
-export function applyMapTextures(map: Cell[][], textures: Partial<Record<string, ImageData>>) {
-    map.forEach(row => row.forEach(cell => {
-        cell.wallTexture = textures[cell.wallType];
-        cell.floorTexture = textures[cell.floorType];
-        cell.ceilingTexture = textures[cell.ceilingType];
-    }));
-}
-
-export function attachInputs(
-    canvas: HTMLCanvasElement,
-    aspectRatio: number,
-    playerInputs: PlayerInputs,
-    repaint: () => void,
-    playerPos: Vec3,
-    playerDir: Vec2,
-    playerVel: Vec3,
-    setPos: (dest: Vec2) => void,
-    map: Cell[][],
-    mapSize: Vec2,
-    animations: ((dt: number) => boolean)[],
-) {
-    attachKeyboard(canvas, playerInputs);
-    attachMouse(canvas, repaint, playerPos, playerDir, setPos);
-    attachTouch(canvas, repaint, playerPos, playerDir, setPos);
-    attachUseKey(canvas, aspectRatio, playerPos, playerDir, map, mapSize, animations);
-    attachJumpKey(canvas, playerPos, playerVel);
-}
-
-export function attachUseKey(
-    canvas: HTMLCanvasElement,
-    aspectRatio: number,
-    playerPos: Vec3,
-    playerDir: Vec2,
-    map: Cell[][],
-    mapSize: Vec2,
-    animations: ((dt: number) => boolean)[],
-) {
-    canvas.addEventListener('keypress', e => {
-        if (e.key === 'e') {
-            e.preventDefault();
-            const wall = castRayToWall(canvas, aspectRatio, playerPos, playerDir, Math.floor(canvas.width / 2), map, mapSize);
-            if (wall?.cell.door && wall.dist < 1.5) {
-                openDoor(wall.pos, wall.cell.door, playerPos, animations);
-            }
-        }
-    });
-    canvas.addEventListener('click', e => {
-        const rect = canvas.getBoundingClientRect();
-        const x = Math.floor((e.clientX - rect.left) / rect.width * canvas.width);
-        const y = Math.floor((e.clientY - rect.top) / rect.height * canvas.height);
-        if (x >= 0 && x < canvas.width) {
-            const wall = castRayToPoint(canvas, aspectRatio, playerPos, playerDir, x, y, map, mapSize);
-            if (wall?.cell.door && wall.dist < 1.5) {
-                openDoor(wall.pos, wall.cell.door, playerPos, animations);
-            }
-        }
-    });
-    canvas.addEventListener('touchend', e => {
-        if (e.changedTouches.length) {
-            const touch = e.changedTouches[0];
-            const rect = canvas.getBoundingClientRect();
-            const x = Math.floor((touch.clientX - rect.left) / rect.width * canvas.width);
-            const y = Math.floor((touch.clientY - rect.top) / rect.height * canvas.height);
-            if (x >= 0 && x < canvas.width) {
-                const wall = castRayToPoint(canvas, aspectRatio, playerPos, playerDir, x, y, map, mapSize);
-                if (wall?.cell.door && wall.dist < 1.5) {
-                    openDoor(wall.pos, wall.cell.door, playerPos, animations);
-                }
-            }
-        }
-    });
-}
-
-export function openDoor(
-    mapPos: Vec2,
-    door: Door,
-    playerPos: Vec2,
-    animations: ((dt: number) => boolean)[],
-) {
-    if (door.active) {
-        return;
-    }
-    door.active = true;
-    animations.push(dt => {
-        door.offset += dt;
-        if (door.offset >= 62/64) {
-            door.offset = 62/64;
-            door.active = false;
-            door.open = true;
-            setTimeout(() => closeDoor(mapPos, door, playerPos, animations), 3000);
-            return false;
-        }
-        return true;
-    });
-}
-
-export function closeDoor(
-    mapPos: Vec2,
-    door: Door,
-    playerPos: Vec2,
-    animations: ((dt: number) => boolean)[],
-) {
-    if (door.active) {
-        return;
-    }
-    if (Math.floor(playerPos.x) === mapPos.x && Math.floor(playerPos.y) === mapPos.y) {
-        setTimeout(() => closeDoor(mapPos, door, playerPos, animations), 1000);
-        return;
-    }
-    door.active = true;
-    door.open = false;
-    animations.push(dt => {
-        door.offset -= dt;
-        if (door.offset <= 0) {
-            door.offset = 0;
-            door.active = false;
-            return false;
-        }
-        return true;
-    });
-}
-
-export function castRayToPoint(
-    canvas: HTMLCanvasElement,
-    aspectRatio: number,
-    playerPos: Vec3,
-    playerDir: Vec2,
-    x: number,
-    _y: number,
-    map: Cell[][],
-    mapSize: Vec2,
-): {
-    pos: Vec2;
-    cell: Cell;
-    dist: number;
-} | undefined {
-    const cell = castRayToWall(canvas, aspectRatio, playerPos, playerDir, x, map, mapSize);
-    if (cell) {
-        return cell;
-    }
-    return undefined;
-}
-
-export function castRayToWall(
-    canvas: HTMLCanvasElement,
-    aspectRatio: number,
-    playerPos: Vec3,
-    playerDir: Vec2,
-    x: number,
-    map: Cell[][],
-    mapSize: Vec2,
-): {
-    pos: Vec2;
-    cell: Cell;
-    dist: number;
-} | undefined {
-    const cameraPlane = getCameraPlane(playerDir);
-    const ray = createRay(canvas, aspectRatio, playerPos, playerDir, x, cameraPlane);
-    while (true) {
-        advanceRay(ray);
-        const cell = getMapCell(map, ray.mapPos, mapSize)
-        if (!cell) {
-            return undefined;
-        }
-        if (cell.floorHeight >= playerPos.z + playerHeight || cell.ceilingHeight <= playerPos.z + playerHeight || cell.door && !cell.door.open) {
-            return {
-                pos: ray.mapPos,
-                cell,
-                dist: ray.perpWallDist,
-            }
-        }
-    }
-}
-
-
-export function attachJumpKey(
-    canvas: HTMLCanvasElement,
-    playerPos: Vec3,
-    playerVel: Vec3,
-) {
-    canvas.addEventListener('keypress', e => {
-        if (e.key === ' ') {
-            e.preventDefault();
-            const cell = map[playerPos.y | 0][playerPos.x | 0];
-            if (cell && playerPos.z === cell.floorHeight) {
-                playerVel.z = 3;
-            }
-        }
-    });
-    canvas.addEventListener('contextmenu', e => {
-        e.preventDefault();
-        const cell = map[playerPos.y | 0][playerPos.x | 0];
-        if (cell && playerPos.z === cell.floorHeight) {
-            playerVel.z = 3;
-        }
-    });
-}
-
-export function setPlayerPos(
-    playerPos: Vec3,
-    newPlayerPos: Vec2,
-    map: Cell[][],
-    mapSize: Vec2,
-) {
-    const mapPos = {x: Math.floor(newPlayerPos.x), y: Math.floor(newPlayerPos.y)};
-    if (mapPos.x < 0 || mapPos.x >= mapSize.x || mapPos.y < 0 || mapPos.y >= mapSize.y) {
-        return;
-    }
-    const cell = map[mapPos.y][mapPos.x];
-    if (cell.door && !cell.door.open) {
-        return;
-    }
-    if (cell.floorHeight <= playerPos.z + maxStepSize && cell.ceilingHeight > Math.max(playerPos.z, cell.floorHeight) + playerHeight) {
-        playerPos.x = newPlayerPos.x;
-        playerPos.y = newPlayerPos.y;
-        if (playerPos.z < cell.floorHeight) {
-            playerPos.z = cell.floorHeight;
-        }
-    }
-}
-
-export function applyGravity(
-    playerPos: Vec3,
-    playerVel: Vec3,
-    map: Cell[][],
-    dt: number,
-) {
-    const cell = map[playerPos.y | 0][playerPos.x | 0];
-    if (cell && (playerVel.z !== 0 || playerPos.z > cell.floorHeight)) {
-        playerPos.z += playerVel.z * dt;
-        playerVel.z -= gravity * dt;
-        if (playerPos.z <= cell.floorHeight) {
-            playerPos.z = cell.floorHeight;
-            playerVel.z = 0;
-        } else if (playerPos.z > cell.ceilingHeight - playerHeight) {
-            playerPos.z = cell.ceilingHeight - playerHeight;
-            playerVel.z = 0;
-        }
-    }
+export async function loadRotatedTextureData(path: string): Promise<ImageData> {
+    const data = await loadTextureData(path);
+    const canvas = document.createElement('canvas');
+    canvas.width = textureSize.x;
+    canvas.height = textureSize.y;
+    canvas.getContext('2d')!.putImageData(data, 0, 0);
+    const rotated = document.createElement('canvas');
+    rotated.width = textureSize.y;
+    rotated.height = textureSize.x;
+    const ctx = rotated.getContext('2d')!;
+    ctx.transform(0, 1, 1, 0, 0, 0);
+    ctx.drawImage(canvas, 0, 0);
+    return ctx.getImageData(0, 0, rotated.width, rotated.height);
 }
 
 export function renderEnv(
@@ -448,7 +104,7 @@ export function renderEnv(
     for (let x = 0; x < canvas.width; x++) {
         const zBufferOffset = x * canvas.height;
         const ray = createRay(canvas, aspectRatio, playerPos, playerDir, x, cameraPlane);
-        const stripe = ctx.getImageData(x, 0, 1, canvas.height);
+        const stripe = ctx.getImageData(0, x, canvas.height, 1);
 
         let yFloor = 0;
         let yCeiling = 0;
@@ -484,24 +140,8 @@ export function renderEnv(
             }
             floorCell = cell;
         }
-        ctx.putImageData(stripe, x, 0);
+        ctx.putImageData(stripe, 0, x);
     }
-}
-
-export interface WallMeasurements {
-    heightMultiplier: number;
-    wallX: number;
-}
-
-export function getWallMeasurements(ray: Ray, canvasHeight: number, playerPos: Vec3): WallMeasurements {
-    const heightMultiplier = canvasHeight / ray.perpWallDist;
-    let wallX: number;
-    if (ray.side === 0) {
-        wallX = playerPos.y + ray.perpWallDist * ray.rayDir.y - ray.mapPos.y;
-    } else {
-        wallX = playerPos.x + ray.perpWallDist * ray.rayDir.x - ray.mapPos.x;
-    }
-    return {heightMultiplier, wallX};
 }
 
 export function renderWall(
@@ -532,7 +172,7 @@ export function renderWall(
 
     if (yStart <= ceilingY || yEnd >= floorY) {
         const brightness = getBrightness(ray.perpWallDist, ray.side);
-        let texX: number = wall.wallX * textureSize.x | 0;
+        let texX: number = wall.wallX * textureSize.x & (textureSize.x - 1);
 
         const step = textureSize.y * ray.perpWallDist / canvas.height;
         let texPos = wallY < yStart ? (yStart - wallY) * step : 0;
@@ -546,7 +186,10 @@ export function renderWall(
             const texY = texPos & (textureSize.y - 1);
             const offset = y * 4;
             if (wallTexture) {
-                const texOffset = (texY * textureSize.x + texX) * 4;
+                const texOffset = (texX * textureSize.x + texY) * 4;
+                if (texOffset >= wallTexture.data.length) {
+                    console.warn({texOffset, texX, texY, wall});
+                }
                 stripe.data[offset] = wallTexture.data[texOffset] * brightness;
                 stripe.data[offset + 1] = wallTexture.data[texOffset + 1] * brightness;
                 stripe.data[offset + 2] = wallTexture.data[texOffset + 2] * brightness;
@@ -645,7 +288,7 @@ export function renderDoor(
         const texY = texPos & (textureSize.y - 1);
         texPos += step;
         if (doorTexture) {
-            const texOffset = (texY * textureSize.x + texX) * 4;
+            const texOffset = (texX * textureSize.x + texY) * 4;
             stripe.data[offset] = doorTexture.data[texOffset] * brightness;
             stripe.data[offset + 1] = doorTexture.data[texOffset + 1] * brightness;
             stripe.data[offset + 2] = doorTexture.data[texOffset + 2] * brightness;
@@ -758,7 +401,7 @@ export function mapFloorTexture(
     const floorY = weight * floor.floorYWall + (1 - weight) * playerPos.y;
     let tx = ((textureSize.x * floorX) | 0) & (textureSize.x - 1);
     let ty = ((textureSize.y * floorY) | 0) & (textureSize.y - 1);
-    const texOffset = (ty * textureSize.x + tx) * 4;
+    const texOffset = (tx * textureSize.x + ty) * 4;
     const brightness = getBrightness(rowDistance);
     const offset = y * 4;
     stripe.data[offset] = floorTexture.data[texOffset] * brightness;
@@ -766,6 +409,7 @@ export function mapFloorTexture(
     stripe.data[offset + 2] = floorTexture.data[texOffset + 2] * brightness;
     stripe.data[offset + 3] = 255;
 }
+
 
 export function renderSprites(
     canvas: HTMLCanvasElement,
@@ -802,7 +446,7 @@ export function renderSprites(
         const spriteYOffset = drawStartY < 0 ? drawStartY : 0;
         const yMax = Math.min(canvas.height, screenStartY + spriteHeight) - screenStartY;
         const brightness = getBrightness(transformY);
-        const imageData = ctx.getImageData(drawStartX, screenStartY, xMax, yMax);
+        const imageData = ctx.getImageData(screenStartY, drawStartX, yMax, xMax);
         for (let x = 0; x < xMax; x++) {
             const stripe = x + drawStartX;
             const texX = Math.floor(64 * (stripe - (-spriteWidth / 2 + spriteScreenX)) * textureSize.x / spriteWidth / 64);
@@ -814,8 +458,8 @@ export function renderSprites(
                         continue;
                     }
                     const texYPos = texY + Math.floor((y - spriteYOffset) / spriteHeight * textureSize.y);
-                    const offset = (y * imageData.width + x) * 4;
-                    const texOffset = (texYPos * textureSize.x + texX) * 4;
+                    const offset = (x * imageData.width + y) * 4;
+                    const texOffset = (texX * textureSize.x + texYPos) * 4;
                     if (sprite.texture.data[texOffset + 3]) {
                         imageData.data[offset] = sprite.texture.data[texOffset] * brightness;
                         imageData.data[offset + 1] = sprite.texture.data[texOffset + 1] * brightness;
@@ -825,6 +469,6 @@ export function renderSprites(
                 }
             }
         }
-        ctx.putImageData(imageData, drawStartX, screenStartY);
+        ctx.putImageData(imageData, screenStartY, drawStartX);
     }
 }

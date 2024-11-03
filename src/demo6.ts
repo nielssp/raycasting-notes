@@ -1,4 +1,5 @@
 import { PlayerInputs, advanceRay, attachKeyboard, attachMouse, attachTouch, createRay, getCameraPlane, getMapCell, map, mapSize, setPlayerPos, updatePosition } from './demo1';
+import { createSky, renderBackground } from './demo2';
 import { WallMeasurements, getWallMeasurements, renderWall } from './demo3';
 import { FloorMeasurements, getFloorMeasurements, mapFloorTexture, renderFloor } from './demo5';
 import { Vec2, attachRenderFunction, initCanvas, loadTextureData } from './util';
@@ -21,9 +22,11 @@ export async function initDemo6() {
     const ceilingTexture: ImageData = await loadTextureData('/assets/content/misc/textures/ceiling.png');
 
     const [canvas, ctx] = initCanvas('canvas6');
+    const sky = createSky(canvas, ctx);
     const aspectRatio = canvas.width / canvas.height;
     const repaint = attachRenderFunction(canvas, dt => {
         updatePosition(dt, playerInputs, playerPos, playerDir, setPos);
+        renderBackground(canvas, ctx, sky);
         renderEnv(canvas, ctx, aspectRatio, playerPos, playerDir, wallTexture, floorTexture, ceilingTexture);
     });
     attachKeyboard(canvas, playerInputs);
