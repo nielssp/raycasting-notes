@@ -99,24 +99,29 @@ export function sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-const textureCache = new Map<string, Promise<ImageData>>();
+const imageCache = new Map<string, Promise<HTMLImageElement>>();
 
-export function loadTextureData(src: string): Promise<ImageData> {
-    let texture = textureCache.get(src);
-    if (!texture) {
+export function loadImage(src: string): Promise<HTMLImageElement> {
+    let promise = imageCache.get(src);
+    if (!promise) {
         const img = new Image();
         img.src = src;
-        texture = new Promise((resolve, reject) => {
+        promise = new Promise((resolve, reject) => {
             img.onload = () => {
-                const canvas = document.createElement('canvas');
-                const context = canvas.getContext('2d')!;
-                canvas.width = img.width;
-                canvas.height = img.height;
-                context.drawImage(img, 0, 0);
-                resolve(context.getImageData(0, 0, canvas.width, canvas.height));
+                resolve(img);
             };
             img.onerror = reject;
         });
     }
-    return texture;
+    return promise;
+}
+
+export async function loadTextureData(src: string): Promise<ImageData> {
+    const img = await loadImage(src);
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d')!;
+    canvas.width = img.width;
+    canvas.height = img.height;
+    context.drawImage(img, 0, 0);
+    return context.getImageData(0, 0, canvas.width, canvas.height);
 }

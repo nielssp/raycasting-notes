@@ -1,5 +1,5 @@
 import { PlayerInputs, advanceRay, createRay, getCameraPlane, getMapCell, setPlayerPos, updatePosition } from './demo1';
-import { getBrightness } from './demo2';
+import { createSky, getBrightness, renderBackground } from './demo2';
 import { getWallMeasurements, renderWall, textureSize } from './demo3';
 import { getFloorMeasurements } from './demo5';
 import { renderFloorAndCeiling } from './demo6';
@@ -43,10 +43,12 @@ export async function initDemo9() {
     sprites.push(createSprite({x: 5, y: 2.75}, barrelTexture));
 
     const [canvas, ctx] = initCanvas('canvas9');
+    const sky = createSky(canvas, ctx);
     const aspectRatio = canvas.width / canvas.height;
     const repaint = attachRenderFunction(canvas, dt => {
         updatePosition(dt, playerInputs, playerPos, playerDir, setPos);
         updateAnimations(animations, dt);
+        renderBackground(canvas, ctx, sky);
         const cameraPlane = getCameraPlane(playerDir);
         const zBuffer = renderEnv(canvas, ctx, aspectRatio, playerPos, playerDir, cameraPlane)
         renderSprites(canvas, ctx, aspectRatio, sprites, zBuffer, playerPos, playerDir, cameraPlane);
@@ -143,7 +145,7 @@ export function renderSprites(
         if (xMax < 1 || transformY <= 0) {
             continue;
         }
-        const screenStartY = Math.max(0, drawStartY);
+        const screenStartY = Math.max(0, Math.min(canvas.height - 1, drawStartY));
         const spriteYOffset = drawStartY < 0 ? drawStartY : 0;
         const yMax = Math.min(canvas.height, screenStartY + spriteHeight) - screenStartY;
         const brightness = getBrightness(transformY);

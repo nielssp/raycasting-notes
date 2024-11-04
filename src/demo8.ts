@@ -1,4 +1,5 @@
 import { PlayerInputs, Ray, advanceRay, attachKeyboard, attachMouse, attachTouch, createRay, getCameraPlane, getMapCell, getWallHeight, setPlayerPos, updatePosition } from './demo1';
+import { createSky, renderBackground } from './demo2';
 import { getWallMeasurements, renderWall } from './demo3';
 import { FloorMeasurements, getFloorMeasurements } from './demo5';
 import { renderFloorAndCeiling } from './demo6';
@@ -79,10 +80,12 @@ export async function initDemo8() {
     const animations: ((dt: number) => boolean)[] = [];
 
     const [canvas, ctx] = initCanvas('canvas8');
+    const sky = createSky(canvas, ctx);
     const aspectRatio = canvas.width / canvas.height;
     const repaint = attachRenderFunction(canvas, dt => {
         updatePosition(dt, playerInputs, playerPos, playerDir, setPos);
         updateAnimations(animations, dt);
+        renderBackground(canvas, ctx, sky);
         renderEnv(canvas, ctx, aspectRatio, playerPos, playerDir)
     });
     attachInputs(canvas, aspectRatio, playerInputs, repaint, playerPos, playerDir, setPos, map, mapSize, animations);

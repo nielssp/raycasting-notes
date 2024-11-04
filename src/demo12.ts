@@ -1,6 +1,6 @@
 import { PlayerInputs, Ray, advanceRay, createRay, getCameraPlane, getMapCell, updatePosition } from './demo1';
-import { Cell, Door, Sprite, WallMeasurements, applyGravity, applyMapTextures, attachInputs, createSprite, getWallMeasurements, map as map11, mapSize, setPlayerPos } from './demo11';
-import { getBrightness } from './demo2';
+import { Cell, Door, Sprite, WallMeasurements, applyGravity, applyMapTextures, attachInputs, createSky, createSprite, getWallMeasurements, map as map11, mapSize, setPlayerPos } from './demo11';
+import { getBrightness, renderBackground } from './demo2';
 import { textureSize } from './demo3';
 import { FloorMeasurements, getFloorMeasurements } from './demo5';
 import { doorEnd, doorStart, updateAnimations } from './demo8';
@@ -56,6 +56,7 @@ export async function initDemo12() {
     ctx.transform(0, 1, 1, 0, 0, 0);
     const zBuffer = Array(canvas.width * canvas.height);
     const aspectRatio = canvas.width / canvas.height;
+    const sky = createSky(canvas, ctx);
 
     const rotated = document.createElement('canvas');
     rotated.width = canvas.height;
@@ -68,8 +69,7 @@ export async function initDemo12() {
         updateAnimations(animations, dt);
         applyGravity(playerPos, playerVel, map, dt);
         const cameraPlane = getCameraPlane(playerDir);
-        rotatedCtx.fillStyle = '#000';
-        rotatedCtx.fillRect(0, 0, canvas.width, canvas.height);
+        renderBackground(canvas, rotatedCtx, sky);
         renderEnv(canvas, rotatedCtx, aspectRatio, playerPos, playerDir, cameraPlane, zBuffer)
         renderSprites(canvas, rotatedCtx, aspectRatio, sprites, zBuffer, playerPos, playerDir, cameraPlane);
         ctx.drawImage(rotated, 0, 0, rotated.width, rotated.height, 0, 0, rotated.width, rotated.height);
@@ -442,7 +442,7 @@ export function renderSprites(
         if (xMax < 1 || transformY <= 0) {
             continue;
         }
-        const screenStartY = Math.max(0, drawStartY);
+        const screenStartY = Math.max(0, Math.min(canvas.height - 1, drawStartY));
         const spriteYOffset = drawStartY < 0 ? drawStartY : 0;
         const yMax = Math.min(canvas.height, screenStartY + spriteHeight) - screenStartY;
         const brightness = getBrightness(transformY);

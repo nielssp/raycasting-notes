@@ -1,4 +1,5 @@
 import { PlayerInputs, advanceRay, attachKeyboard, attachMouse, attachTouch, createRay, getCameraPlane, getMapCell, setPlayerPos, updatePosition } from './demo1';
+import { createSky, renderBackground } from './demo2';
 import { getWallMeasurements, renderWall } from './demo3';
 import { getFloorMeasurements } from './demo5';
 import { renderFloorAndCeiling } from './demo6';
@@ -96,9 +97,11 @@ export async function initDemo7() {
     applyMapTextures(map, textures);
 
     const [canvas, ctx] = initCanvas('canvas7');
+    const sky = createSky(canvas, ctx);
     const aspectRatio = canvas.width / canvas.height;
     const repaint = attachRenderFunction(canvas, dt => {
         updatePosition(dt, playerInputs, playerPos, playerDir, setPos);
+        renderBackground(canvas, ctx, sky);
         renderEnv(canvas, ctx, aspectRatio, playerPos, playerDir);
     });
     attachKeyboard(canvas, playerInputs);

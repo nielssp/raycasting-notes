@@ -1,4 +1,5 @@
 import { PlayerInputs, advanceRay, checkDestination, createRay, getCameraPlane, getMapCell, updatePosition } from './demo1';
+import { createSky, renderBackground } from './demo2';
 import { getWallMeasurements, renderWall } from './demo3';
 import { getFloorMeasurements } from './demo5';
 import { renderFloorAndCeiling } from './demo6';
@@ -77,10 +78,12 @@ export async function initDemo10() {
     sprites.push(createSprite({x: 5, y: 2.75}, barrelTexture));
 
     const [canvas, ctx] = initCanvas('canvas10');
+    const sky = createSky(canvas, ctx);
     const aspectRatio = canvas.width / canvas.height;
     const repaint = attachRenderFunction(canvas, dt => {
         updatePosition(dt, playerInputs, playerPos, playerDir, setPos);
         updateAnimations(animations, dt);
+        renderBackground(canvas, ctx, sky);
         const cameraPlane = getCameraPlane(playerDir);
         const zBuffer = renderEnv(canvas, ctx, aspectRatio, playerPos, playerDir, cameraPlane)
         renderSprites(canvas, ctx, aspectRatio, sprites, zBuffer, playerPos, playerDir, cameraPlane);

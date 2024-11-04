@@ -1,5 +1,5 @@
 import { PlayerInputs, Ray, advanceRay, attachKeyboard, attachMouse, attachTouch, createRay, getCameraPlane, getMapCell, updatePosition } from './demo1';
-import { getBrightness } from './demo2';
+import { getBrightness, renderBackground } from './demo2';
 import { textureSize } from './demo3';
 import { FloorMeasurements, getFloorMeasurements } from './demo5';
 import { doorEnd, doorStart, updateAnimations } from './demo8';
@@ -170,18 +170,26 @@ export async function initDemo11() {
     const [canvas, ctx] = initCanvas('canvas11');
     const zBuffer = Array(canvas.width * canvas.height);
     const aspectRatio = canvas.width / canvas.height;
+    const sky = createSky(canvas, ctx);
     const repaint = attachRenderFunction(canvas, dt => {
         updatePosition(dt, playerInputs, playerPos, playerDir, setPos);
         updateAnimations(animations, dt);
         applyGravity(playerPos, playerVel, map, dt);
         const cameraPlane = getCameraPlane(playerDir);
-        ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        renderBackground(canvas, ctx, sky);
         renderEnv(canvas, ctx, aspectRatio, playerPos, playerDir, cameraPlane, zBuffer)
         renderSprites(canvas, ctx, aspectRatio, sprites, zBuffer, playerPos, playerDir, cameraPlane);
     });
     attachInputs(canvas, aspectRatio, playerInputs, repaint, playerPos, playerDir, playerVel, setPos, map, mapSize, animations);
 }
+
+export function createSky(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) {
+    const sky = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    sky.addColorStop(0, '#000');
+    sky.addColorStop(1, '#333');
+    return sky;
+}
+
 
 export function createSprite(pos: Vec3, texture: ImageData): Sprite {
     return {
@@ -369,7 +377,6 @@ export function castRayToWall(
     }
 }
 
-
 export function attachJumpKey(
     canvas: HTMLCanvasElement,
     playerPos: Vec3,
@@ -389,6 +396,45 @@ export function attachJumpKey(
         const cell = map[playerPos.y | 0][playerPos.x | 0];
         if (cell && playerPos.z === cell.floorHeight) {
             playerVel.z = 3;
+        }
+    });
+    let previousTouch: Touch | undefined;
+    let doubletapTimeout: number | undefined;
+    canvas.addEventListener('touchstart', e => {
+        if (e.changedTouches.length) {
+            const touch = e.changedTouches[0];
+            if (previousTouch) {
+                const dx = touch.pageX - previousTouch.pageX;
+                const dy = touch.pageY - previousTouch.pageY;
+                const distSq = dx * dx + dy * dy;
+                if (distSq < 400) {
+                    const cell = map[playerPos.y | 0][playerPos.x | 0];
+                    if (cell && playerPos.z === cell.floorHeight) {
+                        playerVel.z = 3;
+                    }
+                }
+                previousTouch = undefined;
+            } else {
+                previousTouch = touch;
+                doubletapTimeout = setTimeout(() => previousTouch = undefined, 500);
+            }
+        }
+    });
+    canvas.addEventListener('touchmove', e => {
+        if (!previousTouch) {
+            return;
+        }
+        for (const t of e.changedTouches) {
+            if (t.identifier === previousTouch.identifier) {
+                const dx = t.pageX - previousTouch.pageX;
+                const dy = t.pageY - previousTouch.pageY;
+                const distSq = dx * dx + dy * dy;
+                if (distSq >= 400) {
+                    previousTouch = undefined;
+                    clearTimeout(doubletapTimeout);
+                }
+                break;
+            }
         }
     });
 }
@@ -798,7 +844,7 @@ export function renderSprites(
         if (xMax < 1 || transformY <= 0) {
             continue;
         }
-        const screenStartY = Math.max(0, drawStartY);
+        const screenStartY = Math.max(0, Math.min(canvas.height - 1, drawStartY));
         const spriteYOffset = drawStartY < 0 ? drawStartY : 0;
         const yMax = Math.min(canvas.height, screenStartY + spriteHeight) - screenStartY;
         const brightness = getBrightness(transformY);
