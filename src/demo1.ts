@@ -130,7 +130,7 @@ export function checkDestination(
     map: Cell[][],
     mapSize: Vec2,
 ): boolean {
-    const mapPos = {x: pos.x | 0, y: pos.y | 0};
+    const mapPos = {x: Math.floor(pos.x), y: Math.floor(pos.y)};
     if (mapPos.x < 0 || mapPos.x >= mapSize.x || mapPos.y < 0 || mapPos.y >= mapSize.y) {
         return false;
     }

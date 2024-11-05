@@ -128,8 +128,6 @@ export function renderEnv(
 
         let yFloor = 0;
         let yCeiling = 0;
-        const yFloorMax = canvas.height;
-        const yCeilingMax = yFloorMax;
 
         let floorCell = getMapCell(map, ray.mapPos, mapSize)
         while (true) {
@@ -141,14 +139,14 @@ export function renderEnv(
             const wall = getWallMeasurements(ray, canvas.height, offsetPlayerPos);
             const floor = getFloorMeasurements(ray, wall.wallX);
             [yFloor, yCeiling] = renderFloorAndCeiling(canvas, stripe, wall, floor, offsetPlayerPos, ray.perpWallDist,
-                yFloor, yCeiling, yFloorMax, yCeilingMax, floorCell?.floorTexture, floorCell?.ceilingTexture);
+                yFloor, yCeiling, floorCell?.floorTexture, floorCell?.ceilingTexture);
 
             if (cell.portal) {
                 offsetPlayerPos = add2(offsetPlayerPos, sub2(cell.portal, ray.mapPos));
                 ray.mapPos = {...cell.portal};
                 cell = getMapCell(map, ray.mapPos, mapSize)
             } else if (cell.door) {
-                if (renderDoor(canvas, stripe, cell, cell.door, ray, offsetPlayerPos, floor, yFloor, yCeiling, yFloorMax, yCeilingMax)) {
+                if (renderDoor(canvas, stripe, cell, cell.door, ray, offsetPlayerPos, floor, yFloor, yCeiling)) {
                     break;
                 }
             } else if (cell.solid) {

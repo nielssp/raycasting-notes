@@ -47,7 +47,6 @@ export function renderEnv(
         const stripe = ctx.getImageData(x, 0, 1, canvas.height);
 
         let yFloor = 0;
-        const yFloorMax = canvas.height;
 
         while (true) {
             advanceRay(ray);
@@ -59,7 +58,7 @@ export function renderEnv(
             const cellY = (canvas.height - wall.wallHeight) * 0.5;
             const floorCellY = Math.ceil(cellY);
             const floor = getFloorMeasurements(ray, wall.wallX);
-            yFloor = renderFloor(canvas, stripe, floor, floorCellY, playerPos, yFloor, yFloorMax, ray.perpWallDist, floorTexture);
+            yFloor = renderFloor(canvas, stripe, floor, floorCellY, playerPos, yFloor, ray.perpWallDist, floorTexture);
 
             if (cell.solid) {
                 renderWall(canvas, stripe, ray, wall, wallTexture);
@@ -100,14 +99,13 @@ export function renderFloor(
     floorCellY: number,
     playerPos: Vec2,
     yFloor: number,
-    yFloorMax: number,
     perpWallDist: number,
     floorTexture?: ImageData,
 ): number {
     if (!floorTexture) {
-        return Math.max(yFloor, Math.min(floorCellY, yFloorMax));
+        return Math.max(yFloor, floorCellY);
     }
-    while (yFloor < floorCellY && yFloor < yFloorMax) {
+    while (yFloor < floorCellY) {
         const y = (canvas.height - yFloor - 1);
         mapFloorTexture(canvas, stripe, y, floor, playerPos, yFloor, perpWallDist, floorTexture);
         yFloor++;
@@ -129,8 +127,8 @@ export function mapFloorTexture(
     const weight = rowDistance / perpWallDist;
     const floorX = weight * floor.floorXWall + (1 - weight) * playerPos.x;
     const floorY = weight * floor.floorYWall + (1 - weight) * playerPos.y;
-    let tx = ((textureSize.x * floorX) | 0) & (textureSize.x - 1);
-    let ty = ((textureSize.y * floorY) | 0) & (textureSize.y - 1);
+    let tx = (textureSize.x * floorX) & (textureSize.x - 1);
+    let ty = (textureSize.y * floorY) & (textureSize.y - 1);
     const texOffset = (ty * textureSize.x + tx) * 4;
     const brightness = getBrightness(rowDistance);
     const offset = y * 4;

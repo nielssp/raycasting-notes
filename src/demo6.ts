@@ -51,8 +51,6 @@ export function renderEnv(
 
         let yFloor = 0;
         let yCeiling = 0;
-        const yFloorMax = canvas.height;
-        const yCeilingMax = yFloorMax;
 
         while (true) {
             advanceRay(ray);
@@ -63,7 +61,7 @@ export function renderEnv(
             const wall = getWallMeasurements(ray, canvas.height, playerPos);
             const floor = getFloorMeasurements(ray, wall.wallX);
             [yFloor, yCeiling] = renderFloorAndCeiling(canvas, stripe, wall, floor, playerPos, ray.perpWallDist,
-                yFloor, yCeiling, yFloorMax, yCeilingMax, floorTexture, ceilingTexture);
+                yFloor, yCeiling, floorTexture, ceilingTexture);
 
             if (cell.solid) {
                 renderWall(canvas, stripe, ray, wall, wallTexture);
@@ -83,16 +81,14 @@ export function renderFloorAndCeiling(
     floorDist: number,
     yFloor: number,
     yCeiling: number,
-    yFloorMax: number,
-    yCeilingMax: number,
     floorTexture?: ImageData,
     ceilingTexture?: ImageData,
 ): [number, number]{
     const cellY = (canvas.height - wall.wallHeight) * 0.5;
     const floorCellY = Math.ceil(cellY);
     const ceilingCellY = Math.ceil(cellY);
-    yFloor = renderFloor(canvas, stripe, floor, floorCellY, playerPos, yFloor, yFloorMax, floorDist, floorTexture);
-    yCeiling = renderCeiling(canvas, stripe, floor, playerPos, ceilingCellY, yCeiling, yCeilingMax, floorDist, ceilingTexture)
+    yFloor = renderFloor(canvas, stripe, floor, floorCellY, playerPos, yFloor, floorDist, floorTexture);
+    yCeiling = renderCeiling(canvas, stripe, floor, playerPos, ceilingCellY, yCeiling, floorDist, ceilingTexture)
     return [yFloor, yCeiling];
 }
 
@@ -103,14 +99,13 @@ export function renderCeiling(
     playerPos: Vec2,
     ceilingCellY: number,
     yCeiling: number,
-    yCeilingMax: number,
     perpWallDist: number,
     ceilingTexture?: ImageData,
 ): number {
     if (!ceilingTexture) {
-        return Math.max(yCeiling, Math.min(ceilingCellY, yCeilingMax));
+        return Math.max(yCeiling, ceilingCellY);
     }
-    while (yCeiling < ceilingCellY && yCeiling < yCeilingMax) {
+    while (yCeiling < ceilingCellY) {
         mapFloorTexture(canvas, stripe, yCeiling, floor, playerPos, yCeiling, perpWallDist, ceilingTexture);
         yCeiling++;
     }
