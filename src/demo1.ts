@@ -179,11 +179,13 @@ export function attachMouse(
     setPos: (dest: Vec2) => void,
 ) {
     let dragging = false;
-    canvas.addEventListener('mousedown', () => {
-        dragging = true;
+    canvas.addEventListener('mousedown', e => {
+        if (e.button === 0) {
+            dragging = true;
+        }
     });
     document.addEventListener('mousemove', e => {
-        if (!dragging) {
+        if (!dragging || e.button !== 0) {
             return;
         }
         // Add or subtract direction vector from position when moving mouse up
@@ -200,8 +202,10 @@ export function attachMouse(
         });
         repaint();
     });
-    document.addEventListener('mouseup', () => {
-        dragging = false;
+    document.addEventListener('mouseup', e => {
+        if (e.button === 0) {
+            dragging = false;
+        }
     });
     canvas.addEventListener('dblclick', () => {
         if (document.fullscreenElement === canvas) {
