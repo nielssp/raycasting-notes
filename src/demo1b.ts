@@ -115,14 +115,14 @@ export async function renderEnv(
                 sideDist.x = (playerPos.x - mapPos.x) * deltaDist.x;
             } else {
                 step.x = 1;
-                sideDist.x = (mapPos.x + 1.0 - playerPos.x) * deltaDist.x;
+                sideDist.x = (1 - playerPos.x + mapPos.x) * deltaDist.x;
             }
             if (rayDir.y < 0) {
                 step.y = -1;
                 sideDist.y = (playerPos.y - mapPos.y) * deltaDist.y;
             } else {
                 step.y = 1;
-                sideDist.y = (mapPos.y + 1.0 - playerPos.y) * deltaDist.y;
+                sideDist.y = (1 - playerPos.y + mapPos.y) * deltaDist.y;
             }
 
             ctx.strokeStyle = '#fff';
@@ -131,6 +131,7 @@ export async function renderEnv(
                 y: playerPos.y * cellSize,
             };
             while (true) {
+                let side = 0;
                 if (sideDist.x < sideDist.y) {
                     perpWallDist = sideDist.x;
                     sideDist.x += deltaDist.x;
@@ -139,6 +140,7 @@ export async function renderEnv(
                     perpWallDist = sideDist.y;
                     sideDist.y += deltaDist.y;
                     mapPos.y += step.y;
+                    side = 1;
                 }
                 if (mapPos.x < 0 || mapPos.x >= mapSize.x || mapPos.y < 0 || mapPos.y >= mapSize.y) {
                     break;
@@ -171,7 +173,7 @@ export async function renderEnv(
                     points.push(next);
                     break;
                 } else {
-                    ctx.fillStyle = '#0F0';
+                    ctx.fillStyle = side ? '#0F0' : '#00F';
                     ctx.beginPath();
                     ctx.arc(
                         next.x,

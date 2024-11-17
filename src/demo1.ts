@@ -362,14 +362,14 @@ export function createRay(
         sideDist.x = (playerPos.x - mapPos.x) * deltaDist.x;
     } else {
         step.x = 1;
-        sideDist.x = (mapPos.x + 1.0 - playerPos.x) * deltaDist.x;
+        sideDist.x = (1 - playerPos.x + mapPos.x) * deltaDist.x;
     }
     if (rayDir.y < 0) {
         step.y = -1;
         sideDist.y = (playerPos.y - mapPos.y) * deltaDist.y;
     } else {
         step.y = 1;
-        sideDist.y = (mapPos.y + 1.0 - playerPos.y) * deltaDist.y;
+        sideDist.y = (1 - playerPos.y + mapPos.y) * deltaDist.y;
     }
     return {x, rayDir, mapPos, deltaDist, sideDist, step, side: 0, perpWallDist: 0};
 }
