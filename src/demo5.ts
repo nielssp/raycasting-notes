@@ -55,10 +55,9 @@ export function renderEnv(
                 break;
             }
             const wall = getWallMeasurements(ray, canvas.height, playerPos);
-            const cellY = (canvas.height - wall.wallHeight) * 0.5;
-            const floorCellY = Math.ceil(cellY);
+            const cellY = Math.ceil((canvas.height - wall.wallHeight) * 0.5);
             const floor = getFloorMeasurements(ray, wall.wallX);
-            yFloor = renderFloor(canvas, stripe, floor, floorCellY, playerPos, yFloor, ray.perpWallDist, floorTexture);
+            yFloor = renderFloor(canvas, stripe, floor, cellY, playerPos, yFloor, ray.perpWallDist, floorTexture);
 
             if (cell.solid) {
                 renderWall(canvas, stripe, ray, wall, wallTexture);
@@ -76,18 +75,18 @@ export interface FloorMeasurements {
 
 export function getFloorMeasurements(ray: Ray, wallX: number): FloorMeasurements {
     let floorXWall: number, floorYWall: number;
-    if (ray.side === 0 && ray.rayDir.x > 0) {
+    if (ray.side === 0) {
         floorXWall = ray.mapPos.x;
         floorYWall = ray.mapPos.y + wallX;
-    } else if (ray.side === 0 && ray.rayDir.x < 0) {
-        floorXWall = ray.mapPos.x + 1;
-        floorYWall = ray.mapPos.y + wallX;
-    } else if (ray.side === 1 && ray.rayDir.y > 0) {
-        floorXWall = ray.mapPos.x + wallX;
-        floorYWall = ray.mapPos.y;
+        if (ray.rayDir.x < 0) {
+            floorXWall += 1;
+        }
     } else {
         floorXWall = ray.mapPos.x + wallX;
-        floorYWall = ray.mapPos.y + 1;
+        floorYWall = ray.mapPos.y;
+        if (ray.rayDir.y < 0) {
+            floorYWall += 1;
+        }
     }
     return {floorXWall, floorYWall};
 }
@@ -96,16 +95,16 @@ export function renderFloor(
     canvas: HTMLCanvasElement,
     stripe: ImageData,
     floor: FloorMeasurements,
-    floorCellY: number,
+    cellY: number,
     playerPos: Vec2,
     yFloor: number,
     perpWallDist: number,
     floorTexture?: ImageData,
 ): number {
     if (!floorTexture) {
-        return Math.max(yFloor, floorCellY);
+        return Math.max(yFloor, cellY);
     }
-    while (yFloor < floorCellY) {
+    while (yFloor < cellY) {
         const y = (canvas.height - yFloor - 1);
         mapFloorTexture(canvas, stripe, y, floor, playerPos, yFloor, perpWallDist, floorTexture);
         yFloor++;

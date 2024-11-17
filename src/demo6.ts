@@ -84,11 +84,9 @@ export function renderFloorAndCeiling(
     floorTexture?: ImageData,
     ceilingTexture?: ImageData,
 ): [number, number]{
-    const cellY = (canvas.height - wall.wallHeight) * 0.5;
-    const floorCellY = Math.ceil(cellY);
-    const ceilingCellY = Math.ceil(cellY);
-    yFloor = renderFloor(canvas, stripe, floor, floorCellY, playerPos, yFloor, floorDist, floorTexture);
-    yCeiling = renderCeiling(canvas, stripe, floor, playerPos, ceilingCellY, yCeiling, floorDist, ceilingTexture)
+    const cellY = Math.ceil((canvas.height - wall.wallHeight) * 0.5);
+    yFloor = renderFloor(canvas, stripe, floor, cellY, playerPos, yFloor, floorDist, floorTexture);
+    yCeiling = renderCeiling(canvas, stripe, floor, playerPos, cellY, yCeiling, floorDist, ceilingTexture)
     return [yFloor, yCeiling];
 }
 
@@ -97,15 +95,15 @@ export function renderCeiling(
     stripe: ImageData,
     floor: FloorMeasurements,
     playerPos: Vec2,
-    ceilingCellY: number,
+    cellY: number,
     yCeiling: number,
     perpWallDist: number,
     ceilingTexture?: ImageData,
 ): number {
     if (!ceilingTexture) {
-        return Math.max(yCeiling, ceilingCellY);
+        return Math.max(yCeiling, cellY);
     }
-    while (yCeiling < ceilingCellY) {
+    while (yCeiling < cellY) {
         mapFloorTexture(canvas, stripe, yCeiling, floor, playerPos, yCeiling, perpWallDist, ceilingTexture);
         yCeiling++;
     }

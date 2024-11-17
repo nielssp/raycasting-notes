@@ -97,12 +97,12 @@ export function renderWall(
     const yStart = Math.max(wall.wallY, 0);
     const yEnd = Math.min(wall.wallY + wall.wallHeight, canvas.height);
 
-    const step = textureSize.y * ray.perpWallDist / canvas.height;
+    const step = textureSize.y / wall.wallHeight;
     let texPos = wall.wallY < yStart ? (yStart - wall.wallY) * step : 0;
 
     for (let y = yStart; y < yEnd; y++) {
         const offset = y * 4;
-        const texY = texPos & (textureSize.y - 1);
+        const texY = Math.floor(texPos) % textureSize.y;
         texPos += step;
         if (wallTexture) {
             const texOffset = (texY * textureSize.x + texX) * 4;
