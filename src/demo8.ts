@@ -335,42 +335,42 @@ export function renderDoor(
     const floorWallDist = ray.perpWallDist;
     let doorX: number;
     if (ray.side === 0) {
-        doorX = playerPos.y + (ray.sideDist.x - ray.deltaDist.x * doorEnd) * ray.rayDir.y;
+        doorX = playerPos.y + (ray.perpWallDist + ray.deltaDist.x * doorStart) * ray.rayDir.y - ray.mapPos.y;
     } else {
-        doorX = playerPos.x + (ray.sideDist.y - ray.deltaDist.y * doorEnd) * ray.rayDir.x;
+        doorX = playerPos.x + (ray.perpWallDist + ray.deltaDist.y * doorStart) * ray.rayDir.x - ray.mapPos.x;
     }
-    let doorMapX = Math.floor(doorX);
+    if (doorX < 0 || doorX >= 1) {
+        return false;
+    }
     let doorSide = false;
-    if (doorX - doorMapX < door.offset) {
+    if (doorX < door.offset) {
         // The door is partially open and we're looking through the opening
         doorSide = true;
+        let doorX: number;
         if (ray.side === 0) {
-            doorX = playerPos.x + (ray.sideDist.y - ray.deltaDist.y * (1 - door.offset)) * ray.rayDir.x;
+            if (ray.rayDir.y < 0) {
+                return false;
+            }
+            doorX = playerPos.x + (ray.sideDist.y - ray.deltaDist.y * (1 - door.offset)) * ray.rayDir.x - ray.mapPos.x;
         } else {
-            doorX = playerPos.y + (ray.sideDist.x - ray.deltaDist.x * (1 - door.offset)) * ray.rayDir.y;
+            if (ray.rayDir.x < 0) {
+                return false;
+            }
+            doorX = playerPos.y + (ray.sideDist.x - ray.deltaDist.x * (1 - door.offset)) * ray.rayDir.y - ray.mapPos.y;
         }
-        let doorMapX = Math.floor(doorX);
-        if (doorX - doorMapX < doorStart || doorX - doorMapX > doorEnd) {
+        if (doorX < doorStart || doorX > doorEnd) {
             return false;
-        } else if (ray.side === 1 && doorMapX === ray.mapPos.y && ray.rayDir.x > 0) {
-            ray.side = 0;
-            ray.perpWallDist = ray.sideDist.x - ray.deltaDist.x * (1 - door.offset);
-            ray.sideDist.x += ray.deltaDist.x * door.offset;
-        } else if (ray.side === 0 && doorMapX === ray.mapPos.x && ray.rayDir.y > 0) {
+        } else if (ray.side === 0) {
             ray.side = 1;
             ray.perpWallDist = ray.sideDist.y - ray.deltaDist.y * (1 - door.offset);
-            ray.sideDist.y += ray.deltaDist.y * door.offset;
         } else {
-            return false;
+            ray.side = 0;
+            ray.perpWallDist = ray.sideDist.x - ray.deltaDist.x * (1 - door.offset);
         }
-    } else if (ray.side === 0 && doorMapX === ray.mapPos.y) {
+    } else if (ray.side === 0) {
         ray.perpWallDist = ray.sideDist.x - ray.deltaDist.x * doorEnd;
-        ray.sideDist.x += ray.deltaDist.x * doorStart;
-    } else if (ray.side === 1 && doorMapX === ray.mapPos.x) {
-        ray.perpWallDist = ray.sideDist.y - ray.deltaDist.y * doorEnd;
-        ray.sideDist.y += ray.deltaDist.y * doorStart;
     } else {
-        return false;
+        ray.perpWallDist = ray.sideDist.y - ray.deltaDist.y * doorEnd;
     }
     const wall = getWallMeasurements(ray, canvas.height, playerPos);
     if (!doorSide) {
