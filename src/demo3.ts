@@ -85,7 +85,7 @@ export function renderWall(
 ) {
     const brightness = getBrightness(ray.perpWallDist, ray.side);
 
-    let texX: number = wall.wallX * textureSize.x | 0;
+    const texX = Math.floor(wall.wallX * textureSize.x);
     /*
     if (ray.side === 0 && ray.rayDir.x < 0) {
         texX = textureSize.x - texX - 1;

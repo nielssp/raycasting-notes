@@ -51,7 +51,7 @@ export async function initDemo9() {
         renderBackground(canvas, ctx, sky);
         const cameraPlane = getCameraPlane(playerDir);
         const zBuffer = renderEnv(canvas, ctx, aspectRatio, playerPos, playerDir, cameraPlane)
-        renderSprites(canvas, ctx, aspectRatio, sprites, zBuffer, playerPos, playerDir, cameraPlane);
+        renderSprites(canvas, ctx, aspectRatio, sprites, zBuffer, playerPos, cameraPlane);
     });
     attachInputs(canvas, aspectRatio, playerInputs, repaint, playerPos, playerDir, setPos, map, mapSize, animations);
 }
@@ -119,7 +119,6 @@ export function renderSprites(
     sprites: Sprite[],
     zBuffer: number[],
     playerPos: Vec2,
-    playerDir: Vec2,
     cameraPlane: Vec2,
 ) {
     for (const sprite of sprites) {
@@ -128,44 +127,49 @@ export function renderSprites(
     }
     sprites.sort((a, b) => b.relDist - a.relDist);
 
-    const invDet = 1 / (cameraPlane.x * playerDir.y - playerDir.x * cameraPlane.y);
     for (const sprite of sprites) {
-        const transformX = invDet * (playerDir.y * sprite.relPos.x - playerDir.x * sprite.relPos.y);
-        const transformY = invDet * (-cameraPlane.y * sprite.relPos.x + cameraPlane.x * sprite.relPos.y);
-        const spriteScreenX = canvas.width / aspectRatio * (aspectRatio / 2 + transformX / transformY) | 0;
-        const spriteHeight = Math.abs(canvas.height / transformY | 0);
-        const drawStartY = (-spriteHeight / 2 + canvas.height / 2) | 0;
-        const spriteWidth = Math.abs(canvas.height / transformY | 0);
-        const drawStartX = Math.max(0, -spriteWidth / 2 + spriteScreenX) | 0;
-        const drawEndX = Math.min(canvas.width - 1, spriteWidth / 2 + spriteScreenX) | 0;
-        const texY = 0;
-        const xMax = drawEndX - drawStartX;
-        if (xMax < 1 || transformY <= 0) {
+        const transform: Vec2 = {
+            x: cameraPlane.x * sprite.relPos.x + cameraPlane.y * sprite.relPos.y,
+            y: cameraPlane.y * sprite.relPos.x - cameraPlane.x * sprite.relPos.y,
+        };
+        if (transform.y <= 0) {
             continue;
         }
+        //const spriteScreenX = Math.floor(canvas.width / aspectRatio * (aspectRatio / 2 + transform.x / transform.y));
+        const spriteScreenX = Math.floor(canvas.width * (0.5 + transform.x / (aspectRatio * transform.y)));
+        const spriteWidth = Math.abs(Math.floor(canvas.height / transform.y));
+        const drawStartX = Math.floor(Math.max(0, -spriteWidth / 2 + spriteScreenX));
+        const drawEndX = Math.floor(Math.min(canvas.width, spriteWidth / 2 + spriteScreenX));
+        const xMax = drawEndX - drawStartX;
+        if (xMax < 1) {
+            continue;
+        }
+        const spriteHeight = spriteWidth;
+        const drawStartY = Math.floor((-spriteHeight / 2 + canvas.height / 2));
         const screenStartY = Math.max(0, Math.min(canvas.height - 1, drawStartY));
         const spriteYOffset = drawStartY < 0 ? drawStartY : 0;
         const yMax = Math.min(canvas.height, screenStartY + spriteHeight) - screenStartY;
-        const brightness = getBrightness(transformY);
+        const brightness = getBrightness(transform.y);
         const imageData = ctx.getImageData(drawStartX, screenStartY, xMax, yMax);
         for (let x = 0; x < xMax; x++) {
             const stripe = x + drawStartX;
-            const texX = Math.floor(64 * (stripe - (-spriteWidth / 2 + spriteScreenX)) * textureSize.x / spriteWidth / 64);
+            const texX = Math.floor((stripe + spriteWidth / 2 - spriteScreenX) * textureSize.x / spriteWidth);
 
-            if (stripe > 0 && stripe < canvas.width) {
-                for (let y = 0; y < yMax; y++) {
-                    if (transformY >= zBuffer[x + drawStartX]) {
-                        continue;
-                    }
-                    const texYPos = texY + Math.floor((y - spriteYOffset) / spriteHeight * textureSize.y);
-                    const offset = (y * imageData.width + x) * 4;
-                    const texOffset = (texYPos * textureSize.x + texX) * 4;
-                    if (sprite.texture.data[texOffset + 3]) {
-                        imageData.data[offset] = sprite.texture.data[texOffset] * brightness;
-                        imageData.data[offset + 1] = sprite.texture.data[texOffset + 1] * brightness;
-                        imageData.data[offset + 2] = sprite.texture.data[texOffset + 2] * brightness;
-                        imageData.data[offset + 3] = sprite.texture.data[texOffset + 3];
-                    }
+            if (stripe < 0 || stripe >= canvas.width) {
+                continue;
+            }
+            for (let y = 0; y < yMax; y++) {
+                if (transform.y >= zBuffer[x + drawStartX]) {
+                    continue;
+                }
+                const texYPos = Math.floor((y - spriteYOffset) / spriteHeight * textureSize.y);
+                const offset = (y * imageData.width + x) * 4;
+                const texOffset = (texYPos * textureSize.x + texX) * 4;
+                if (sprite.texture.data[texOffset + 3]) {
+                    imageData.data[offset] = sprite.texture.data[texOffset] * brightness;
+                    imageData.data[offset + 1] = sprite.texture.data[texOffset + 1] * brightness;
+                    imageData.data[offset + 2] = sprite.texture.data[texOffset + 2] * brightness;
+                    imageData.data[offset + 3] = sprite.texture.data[texOffset + 3];
                 }
             }
         }

@@ -86,7 +86,7 @@ export async function initDemo10() {
         renderBackground(canvas, ctx, sky);
         const cameraPlane = getCameraPlane(playerDir);
         const zBuffer = renderEnv(canvas, ctx, aspectRatio, playerPos, playerDir, cameraPlane)
-        renderSprites(canvas, ctx, aspectRatio, sprites, zBuffer, playerPos, playerDir, cameraPlane);
+        renderSprites(canvas, ctx, aspectRatio, sprites, zBuffer, playerPos, cameraPlane);
     });
     attachInputs(canvas, aspectRatio, playerInputs, repaint, playerPos, playerDir, setPos, map, mapSize, animations);
 }
@@ -98,8 +98,8 @@ export function setPlayerPos(
     mapSize: Vec2,
 ) {
     if (checkDestination(newPlayerPos, map, mapSize)) {
-        const currentMapPos = {x: playerPos.x | 0, y: playerPos.y | 0};
-        const newMapPos = {x: newPlayerPos.x | 0, y: newPlayerPos.y | 0};
+        const currentMapPos = {x: Math.floor(playerPos.x), y: Math.floor(playerPos.y)};
+        const newMapPos = {x: Math.floor(newPlayerPos.x), y: Math.floor(newPlayerPos.y)};
         if (currentMapPos.x !== newMapPos.x || currentMapPos.y !== newMapPos.y) {
             const cell = getMapCell(map, newMapPos, mapSize);
             if (cell?.portal) {
