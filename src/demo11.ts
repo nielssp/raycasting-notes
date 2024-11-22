@@ -3,7 +3,8 @@ import { getBrightness, renderBackground } from './demo2';
 import { textureSize } from './demo3';
 import { FloorMeasurements, getFloorMeasurements } from './demo5';
 import { doorEnd, doorStart, updateAnimations } from './demo8';
-import { Vec2, Vec3, attachRenderFunction, initCanvas, loadTextureData, sub2 } from './util';
+import { sortSprites } from './demo9';
+import { Vec2, Vec3, attachRenderFunction, initCanvas, loadTextureData } from './util';
 
 export interface Door {
     doorTexture?: ImageData;
@@ -143,7 +144,7 @@ export async function initDemo11() {
     const setPos = (dest: Vec2) => setPlayerPos(playerPos, dest, map, mapSize);
 
     const textures: Partial<Record<string, ImageData>> = Object.fromEntries(await Promise.all(Object.entries({
-        W: loadTextureData('/assets/content/misc/textures/wall2.png'),
+        W: loadTextureData('/assets/content/misc/textures/wall.png'),
         F: loadTextureData('/assets/content/misc/textures/floor.png'),
         C: loadTextureData('/assets/content/misc/textures/ceiling.png'),
         D: loadTextureData('/assets/content/misc/textures/door.png'),
@@ -178,6 +179,7 @@ export async function initDemo11() {
         const cameraPlane = getCameraPlane(playerDir);
         renderBackground(canvas, ctx, sky);
         renderEnv(canvas, ctx, aspectRatio, playerPos, playerDir, cameraPlane, zBuffer)
+        sortSprites(sprites, playerPos);
         renderSprites(canvas, ctx, aspectRatio, sprites, zBuffer, playerPos, cameraPlane);
     });
     attachInputs(canvas, aspectRatio, playerInputs, repaint, playerPos, playerDir, playerVel, setPos, map, mapSize, animations);
@@ -385,7 +387,7 @@ export function attachJumpKey(
     canvas.addEventListener('keypress', e => {
         if (e.key === ' ') {
             e.preventDefault();
-            const cell = map[playerPos.y | 0][playerPos.x | 0];
+            const cell = map[Math.floor(playerPos.y)][Math.floor(playerPos.x)];
             if (cell && playerPos.z === cell.floorHeight) {
                 playerVel.z = 3;
             }
@@ -393,7 +395,7 @@ export function attachJumpKey(
     });
     canvas.addEventListener('contextmenu', e => {
         e.preventDefault();
-        const cell = map[playerPos.y | 0][playerPos.x | 0];
+        const cell = map[Math.floor(playerPos.y)][Math.floor(playerPos.x)];
         if (cell && playerPos.z === cell.floorHeight) {
             playerVel.z = 3;
         }
@@ -408,7 +410,7 @@ export function attachJumpKey(
                 const dy = touch.pageY - previousTouch.pageY;
                 const distSq = dx * dx + dy * dy;
                 if (distSq < 400) {
-                    const cell = map[playerPos.y | 0][playerPos.x | 0];
+                    const cell = map[Math.floor(playerPos.y)][Math.floor(playerPos.x)];
                     if (cell && playerPos.z === cell.floorHeight) {
                         playerVel.z = 3;
                     }
@@ -468,7 +470,7 @@ export function applyGravity(
     map: Cell[][],
     dt: number,
 ) {
-    const cell = map[playerPos.y | 0][playerPos.x | 0];
+    const cell = map[Math.floor(playerPos.y)][Math.floor(playerPos.x)];
     if (cell && (playerVel.z !== 0 || playerPos.z > cell.floorHeight)) {
         playerPos.z += playerVel.z * dt;
         playerVel.z -= gravity * dt;
@@ -498,8 +500,8 @@ export function renderEnv(
 
         let yFloor = 0;
         let yCeiling = 0;
-        let yFloorMax = canvas.height;
-        let yCeilingMax = yFloorMax;
+        let yFloorMax = canvas.height / 2;
+        let yCeilingMax = canvas.height / 2;
 
         let floorCell = getMapCell(map, ray.mapPos, mapSize)
         while (true) {
@@ -574,22 +576,21 @@ export function renderWall(
     const floorY = Math.ceil(wallY + (cell.cellHeight - cell.floorHeight) * wall.heightMultiplier);
 
     const yStart = Math.max(wallY, yCeiling);
-    const yEnd = Math.min(wallY + wallHeight + 1, canvas.height - yFloor);
+    const yEnd = Math.min(wallY + wallHeight, canvas.height - yFloor);
 
     if (yStart <= ceilingY || yEnd >= floorY) {
         const brightness = getBrightness(ray.perpWallDist, ray.side);
-        let texX: number = wall.wallX * textureSize.x | 0;
+        const texX = (wall.wallX * textureSize.x) & (textureSize.x - 1);
 
         const step = textureSize.y * ray.perpWallDist / canvas.height;
         let texPos = wallY < yStart ? (yStart - wallY) * step : 0;
-        texPos += (1 - cell.cellHeight + (cell.cellHeight | 0)) * textureSize.y;
 
         for (let y = yStart; y < yEnd; y++) {
+            const texY = texPos & (textureSize.y - 1);
             texPos += step;
             if (y > ceilingY && y < floorY) {
                 continue;
             }
-            const texY = texPos & (textureSize.y - 1);
             const offset = y * 4;
             if (wallTexture) {
                 const texOffset = (texY * textureSize.x + texX) * 4;
@@ -629,55 +630,55 @@ export function renderDoor(
     zBuffer: number[],
     zBufferOffset: number,
 ): boolean {
-    const floorDist = ray.perpWallDist;
+    const floorWallDist = ray.perpWallDist;
     let doorX: number;
     if (ray.side === 0) {
-        doorX = playerPos.y + (ray.sideDist.x - ray.deltaDist.x * doorEnd) * ray.rayDir.y;
+        doorX = playerPos.y + (ray.perpWallDist + ray.deltaDist.x * doorStart) * ray.rayDir.y - ray.mapPos.y;
     } else {
-        doorX = playerPos.x + (ray.sideDist.y - ray.deltaDist.y * doorEnd) * ray.rayDir.x;
+        doorX = playerPos.x + (ray.perpWallDist + ray.deltaDist.y * doorStart) * ray.rayDir.x - ray.mapPos.x;
     }
-    let doorMapX = Math.floor(doorX);
+    if (doorX < 0 || doorX >= 1) {
+        return false;
+    }
     let doorSide = false;
-    if (doorX - doorMapX < door.offset) {
+    if (doorX < door.offset) {
         // The door is partially open and we're looking through the opening
         doorSide = true;
+        let doorX: number;
         if (ray.side === 0) {
-            doorX = playerPos.x + (ray.sideDist.y - ray.deltaDist.y * (1 - door.offset)) * ray.rayDir.x;
+            if (ray.rayDir.y < 0) {
+                return false;
+            }
+            doorX = playerPos.x + (ray.sideDist.y - ray.deltaDist.y * (1 - door.offset)) * ray.rayDir.x - ray.mapPos.x;
         } else {
-            doorX = playerPos.y + (ray.sideDist.x - ray.deltaDist.x * (1 - door.offset)) * ray.rayDir.y;
+            if (ray.rayDir.x < 0) {
+                return false;
+            }
+            doorX = playerPos.y + (ray.sideDist.x - ray.deltaDist.x * (1 - door.offset)) * ray.rayDir.y - ray.mapPos.y;
         }
-        let doorMapX = Math.floor(doorX);
-        if (doorX - doorMapX < doorStart || doorX - doorMapX > doorEnd) {
+        if (doorX < doorStart || doorX > doorEnd) {
             return false;
-        } else if (ray.side === 1 && doorMapX === ray.mapPos.y && ray.rayDir.x > 0) {
-            ray.side = 0;
-            ray.perpWallDist = ray.sideDist.x - ray.deltaDist.x * (1 - door.offset);
-            ray.sideDist.x += ray.deltaDist.x * door.offset;
-        } else if (ray.side === 0 && doorMapX === ray.mapPos.x && ray.rayDir.y > 0) {
+        } else if (ray.side === 0) {
             ray.side = 1;
             ray.perpWallDist = ray.sideDist.y - ray.deltaDist.y * (1 - door.offset);
-            ray.sideDist.y += ray.deltaDist.y * door.offset;
         } else {
-            return false;
+            ray.side = 0;
+            ray.perpWallDist = ray.sideDist.x - ray.deltaDist.x * (1 - door.offset);
         }
-    } else if (ray.side === 0 && doorMapX === ray.mapPos.y) {
+    } else if (ray.side === 0) {
         ray.perpWallDist = ray.sideDist.x - ray.deltaDist.x * doorEnd;
-        ray.sideDist.x += ray.deltaDist.x * doorStart;
-    } else if (ray.side === 1 && doorMapX === ray.mapPos.x) {
-        ray.perpWallDist = ray.sideDist.y - ray.deltaDist.y * doorEnd;
-        ray.sideDist.y += ray.deltaDist.y * doorStart;
     } else {
-        return false;
+        ray.perpWallDist = ray.sideDist.y - ray.deltaDist.y * doorEnd;
     }
     const wall = getWallMeasurements(ray, canvas.height, playerPos);
     if (!doorSide) {
         wall.wallX -= door.offset;
     }
-    [yFloor, yCeiling] = renderFloorAndCeiling(canvas, stripe, cell, wall, floor, playerPos, floorDist, yFloor, yCeiling, yFloorMax, yCeilingMax, zBuffer, zBufferOffset, cell.floorTexture, cell.ceilingTexture);
+    [yFloor, yCeiling] = renderFloorAndCeiling(canvas, stripe, cell, wall, floor, playerPos, floorWallDist, yFloor, yCeiling, yFloorMax, yCeilingMax, zBuffer, zBufferOffset, cell.floorTexture, cell.ceilingTexture);
     const doorTexture = doorSide ? door.sideTexture : door.doorTexture;
     const brightness = getBrightness(ray.perpWallDist, ray.side);
 
-    let texX: number = wall.wallX * textureSize.x | 0;
+    let texX = Math.floor(wall.wallX * textureSize.x);
     const wallHeight = Math.ceil(wall.heightMultiplier * cell.cellHeight);
     const wallY = Math.floor(canvas.height / 2 + playerPos.z * wall.heightMultiplier + (0.5 - cell.cellHeight) * wall.heightMultiplier);
     const yStart = Math.max(wallY, yCeiling);
@@ -754,8 +755,8 @@ export function renderFloor(
     const zMultiplier = 2 * playerPos.z - 2 * cell.floorHeight + 1;
     while (yFloor < floorCellY && yFloor < yFloorMax) {
         const y = (canvas.height - yFloor - 1);
-        mapFloorTexture(canvas, stripe, y, zMultiplier, floor, playerPos, yFloor, perpWallDist, floorTexture);
-        zBuffer[zBufferOffset + y] = perpWallDist;
+        const rowDistance = mapFloorTexture(canvas, stripe, y, zMultiplier, floor, playerPos, yFloor, perpWallDist, floorTexture);
+        zBuffer[zBufferOffset + y] = rowDistance;
         yFloor++;
     }
     return yFloor;
@@ -780,8 +781,8 @@ export function renderCeiling(
     }
     const zMultiplier = -2 * playerPos.z + 2 * cell.ceilingHeight - 1;
     while (yCeiling < ceilingCellY && yCeiling < yCeilingMax) {
-        mapFloorTexture(canvas, stripe, yCeiling, zMultiplier, floor, playerPos, yCeiling, perpWallDist, ceilingTexture);
-        zBuffer[zBufferOffset + yCeiling] = perpWallDist;
+        const rowDistance = mapFloorTexture(canvas, stripe, yCeiling, zMultiplier, floor, playerPos, yCeiling, perpWallDist, ceilingTexture);
+        zBuffer[zBufferOffset + yCeiling] = rowDistance;
         yCeiling++;
     }
     return yCeiling;
@@ -797,13 +798,13 @@ export function mapFloorTexture(
     yFloor: number,
     perpWallDist: number,
     floorTexture: ImageData,
-) {
+): number {
     const rowDistance = canvas.height * zMultiplier / (canvas.height - 2 * yFloor);
     const weight = rowDistance / perpWallDist;
     const floorX = weight * floor.floorXWall + (1 - weight) * playerPos.x;
     const floorY = weight * floor.floorYWall + (1 - weight) * playerPos.y;
-    let tx = ((textureSize.x * floorX) | 0) & (textureSize.x - 1);
-    let ty = ((textureSize.y * floorY) | 0) & (textureSize.y - 1);
+    let tx = (textureSize.x * floorX) & (textureSize.x - 1);
+    let ty = (textureSize.y * floorY) & (textureSize.y - 1);
     const texOffset = (ty * textureSize.x + tx) * 4;
     const brightness = getBrightness(rowDistance);
     const offset = y * 4;
@@ -811,6 +812,7 @@ export function mapFloorTexture(
     stripe.data[offset + 1] = floorTexture.data[texOffset + 1] * brightness;
     stripe.data[offset + 2] = floorTexture.data[texOffset + 2] * brightness;
     stripe.data[offset + 3] = 255;
+    return rowDistance;
 }
 
 export function renderSprites(
@@ -823,12 +825,6 @@ export function renderSprites(
     cameraPlane: Vec2,
 ) {
     for (const sprite of sprites) {
-        sprite.relPos = sub2(sprite.pos, playerPos);
-        sprite.relDist = sprite.relPos.x * sprite.relPos.x + sprite.relPos.y * sprite.relPos.y;
-    }
-    sprites.sort((a, b) => b.relDist - a.relDist);
-
-    for (const sprite of sprites) {
         const transform: Vec2 = {
             x: cameraPlane.x * sprite.relPos.x + cameraPlane.y * sprite.relPos.y,
             y: cameraPlane.y * sprite.relPos.x - cameraPlane.x * sprite.relPos.y,
@@ -836,43 +832,41 @@ export function renderSprites(
         if (transform.y <= 0) {
             continue;
         }
-        const spriteScreenX = canvas.width / aspectRatio * (aspectRatio / 2 + transform.x / transform.y) | 0;
-        const spriteHeight = Math.abs(canvas.height / transform.y | 0);
-        const drawStartY = (-spriteHeight / 2 + canvas.height / 2 - (sprite.pos.z - playerPos.z) * spriteHeight) | 0;
-        const spriteWidth = Math.abs(canvas.height / transform.y | 0);
-        const drawStartX = Math.max(0, -spriteWidth / 2 + spriteScreenX) | 0;
-        const drawEndX = Math.min(canvas.width - 1, spriteWidth / 2 + spriteScreenX) | 0;
+        const spriteWidth = Math.floor(canvas.height / transform.y);
+        const spriteScreenX = Math.floor(canvas.width * (0.5 + transform.x / (aspectRatio * transform.y)));
+        const drawStartX = Math.max(0, Math.floor(spriteScreenX - spriteWidth / 2));
+        const drawEndX = Math.min(canvas.width, Math.floor(spriteScreenX + spriteWidth / 2 ));
         const xMax = drawEndX - drawStartX;
         if (xMax < 1) {
             continue;
         }
-        const screenStartY = Math.max(0, Math.min(canvas.height - 1, drawStartY));
-        const spriteYOffset = drawStartY < 0 ? drawStartY : 0;
-        const yMax = Math.min(canvas.height, screenStartY + spriteHeight) - screenStartY;
+        const spriteHeight = spriteWidth;
+        const spriteScreenY = Math.floor(canvas.height / 2 - spriteHeight / 2 - (sprite.pos.z - playerPos.z) * spriteHeight);
+        const drawStartY = Math.max(0, Math.min(canvas.height - 1, spriteScreenY));
+        const drawEndY = Math.min(canvas.height, spriteScreenY + spriteHeight);
+        const yMax = drawEndY - drawStartY;
         const brightness = getBrightness(transform.y);
-        const imageData = ctx.getImageData(drawStartX, screenStartY, xMax, yMax);
+        const imageData = ctx.getImageData(drawStartX, drawStartY, xMax, yMax);
         for (let x = 0; x < xMax; x++) {
-            const stripe = x + drawStartX;
-            const texX = Math.floor((stripe + spriteWidth / 2 - spriteScreenX) * textureSize.x / spriteWidth);
+            const stripeX = x + drawStartX;
+            const texX = Math.floor((stripeX + spriteWidth / 2 - spriteScreenX) / spriteWidth * textureSize.x);
 
-            if (stripe > 0 && stripe < canvas.width) {
-                for (let y = 0; y < yMax; y++) {
-                    const zOffset = ((x + drawStartX) * canvas.height + y + screenStartY);
-                    if (transform.y >= zBuffer[zOffset]) {
-                        continue;
-                    }
-                    const texYPos = Math.floor((y - spriteYOffset) / spriteHeight * textureSize.y);
+            for (let y = 0; y < yMax; y++) {
+                const zOffset = ((x + drawStartX) * canvas.height + y + drawStartY);
+                if (transform.y >= zBuffer[zOffset]) {
+                    continue;
+                }
+                const texYPos = Math.floor((y + drawStartY - spriteScreenY) / spriteHeight * textureSize.y);
+                const texOffset = (texYPos * textureSize.x + texX) * 4;
+                if (sprite.texture.data[texOffset + 3]) {
                     const offset = (y * imageData.width + x) * 4;
-                    const texOffset = (texYPos * textureSize.x + texX) * 4;
-                    if (sprite.texture.data[texOffset + 3]) {
-                        imageData.data[offset] = sprite.texture.data[texOffset] * brightness;
-                        imageData.data[offset + 1] = sprite.texture.data[texOffset + 1] * brightness;
-                        imageData.data[offset + 2] = sprite.texture.data[texOffset + 2] * brightness;
-                        imageData.data[offset + 3] = sprite.texture.data[texOffset + 3];
-                    }
+                    imageData.data[offset] = sprite.texture.data[texOffset] * brightness;
+                    imageData.data[offset + 1] = sprite.texture.data[texOffset + 1] * brightness;
+                    imageData.data[offset + 2] = sprite.texture.data[texOffset + 2] * brightness;
+                    imageData.data[offset + 3] = sprite.texture.data[texOffset + 3];
                 }
             }
         }
-        ctx.putImageData(imageData, drawStartX, screenStartY);
+        ctx.putImageData(imageData, drawStartX, drawStartY);
     }
 }

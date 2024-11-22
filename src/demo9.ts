@@ -51,7 +51,8 @@ export async function initDemo9() {
         renderBackground(canvas, ctx, sky);
         const cameraPlane = getCameraPlane(playerDir);
         const zBuffer = renderEnv(canvas, ctx, aspectRatio, playerPos, playerDir, cameraPlane)
-        renderSprites(canvas, ctx, aspectRatio, sprites, zBuffer, playerPos, cameraPlane);
+        sortSprites(sprites, playerPos);
+        renderSprites(canvas, ctx, aspectRatio, sprites, zBuffer, cameraPlane);
     });
     attachInputs(canvas, aspectRatio, playerInputs, repaint, playerPos, playerDir, setPos, map, mapSize, animations);
 }
@@ -112,21 +113,25 @@ export function renderEnv(
     return zBuffer;
 }
 
-export function renderSprites(
-    canvas: HTMLCanvasElement,
-    ctx: CanvasRenderingContext2D,
-    aspectRatio: number,
+export function sortSprites(
     sprites: Sprite[],
-    zBuffer: number[],
     playerPos: Vec2,
-    cameraPlane: Vec2,
 ) {
     for (const sprite of sprites) {
         sprite.relPos = sub2(sprite.pos, playerPos);
         sprite.relDist = sprite.relPos.x * sprite.relPos.x + sprite.relPos.y * sprite.relPos.y;
     }
     sprites.sort((a, b) => b.relDist - a.relDist);
+}
 
+export function renderSprites(
+    canvas: HTMLCanvasElement,
+    ctx: CanvasRenderingContext2D,
+    aspectRatio: number,
+    sprites: Sprite[],
+    zBuffer: number[],
+    cameraPlane: Vec2,
+) {
     for (const sprite of sprites) {
         const transform: Vec2 = {
             x: cameraPlane.x * sprite.relPos.x + cameraPlane.y * sprite.relPos.y,
@@ -135,37 +140,33 @@ export function renderSprites(
         if (transform.y <= 0) {
             continue;
         }
-        //const spriteScreenX = Math.floor(canvas.width / aspectRatio * (aspectRatio / 2 + transform.x / transform.y));
+        const spriteWidth = Math.floor(canvas.height / transform.y);
         const spriteScreenX = Math.floor(canvas.width * (0.5 + transform.x / (aspectRatio * transform.y)));
-        const spriteWidth = Math.abs(Math.floor(canvas.height / transform.y));
-        const drawStartX = Math.floor(Math.max(0, -spriteWidth / 2 + spriteScreenX));
-        const drawEndX = Math.floor(Math.min(canvas.width, spriteWidth / 2 + spriteScreenX));
+        const drawStartX = Math.max(0, Math.floor(spriteScreenX - spriteWidth / 2));
+        const drawEndX = Math.min(canvas.width, Math.floor(spriteScreenX + spriteWidth / 2 ));
         const xMax = drawEndX - drawStartX;
         if (xMax < 1) {
             continue;
         }
         const spriteHeight = spriteWidth;
-        const drawStartY = Math.floor((-spriteHeight / 2 + canvas.height / 2));
-        const screenStartY = Math.max(0, Math.min(canvas.height - 1, drawStartY));
-        const spriteYOffset = drawStartY < 0 ? drawStartY : 0;
-        const yMax = Math.min(canvas.height, screenStartY + spriteHeight) - screenStartY;
+        const spriteScreenY = Math.floor(canvas.height / 2 - spriteHeight / 2);
+        const drawStartY = Math.max(0, spriteScreenY);
+        const drawEndY = Math.min(canvas.height, spriteScreenY + spriteHeight);
+        const yMax = drawEndY - drawStartY;
         const brightness = getBrightness(transform.y);
-        const imageData = ctx.getImageData(drawStartX, screenStartY, xMax, yMax);
+        const imageData = ctx.getImageData(drawStartX, drawStartY, xMax, yMax);
         for (let x = 0; x < xMax; x++) {
-            const stripe = x + drawStartX;
-            const texX = Math.floor((stripe + spriteWidth / 2 - spriteScreenX) * textureSize.x / spriteWidth);
+            const stripeX = x + drawStartX;
+            const texX = Math.floor((stripeX + spriteWidth / 2 - spriteScreenX) / spriteWidth * textureSize.x);
 
-            if (stripe < 0 || stripe >= canvas.width) {
+            if (transform.y >= zBuffer[stripeX]) {
                 continue;
             }
             for (let y = 0; y < yMax; y++) {
-                if (transform.y >= zBuffer[x + drawStartX]) {
-                    continue;
-                }
-                const texYPos = Math.floor((y - spriteYOffset) / spriteHeight * textureSize.y);
-                const offset = (y * imageData.width + x) * 4;
+                const texYPos = Math.floor((y + drawStartY - spriteScreenY) / spriteHeight * textureSize.y);
                 const texOffset = (texYPos * textureSize.x + texX) * 4;
                 if (sprite.texture.data[texOffset + 3]) {
+                    const offset = (y * imageData.width + x) * 4;
                     imageData.data[offset] = sprite.texture.data[texOffset] * brightness;
                     imageData.data[offset + 1] = sprite.texture.data[texOffset + 1] * brightness;
                     imageData.data[offset + 2] = sprite.texture.data[texOffset + 2] * brightness;
@@ -173,6 +174,6 @@ export function renderSprites(
                 }
             }
         }
-        ctx.putImageData(imageData, drawStartX, screenStartY);
+        ctx.putImageData(imageData, drawStartX, drawStartY);
     }
 }

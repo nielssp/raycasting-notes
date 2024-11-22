@@ -17,6 +17,7 @@ export interface Cell {
     floorTexture?: ImageData;
     ceilingTexture?: ImageData;
     portal?: Vec2;
+    sprites: Sprite[];
 }
 
 export const map: Cell[][] = [
@@ -37,6 +38,7 @@ export const map: Cell[][] = [
         wallType,
         floorType: 'F',
         ceilingType: 'C',
+        sprites: [],
     };
 }));
 map[1][6].portal = {x: 16, y: 1};
@@ -72,10 +74,9 @@ export async function initDemo10() {
 
     const animations: ((dt: number) => boolean)[] = [];
 
-    const sprites: Sprite[] = [];
     const barrelTexture = await loadTextureData('/assets/content/misc/textures/barrel.png');
-    sprites.push(createSprite({x: 4, y: 3}, barrelTexture));
-    sprites.push(createSprite({x: 5, y: 2.75}, barrelTexture));
+    map[3][4].sprites.push(createSprite({x: 4, y: 3}, barrelTexture));
+    map[2][5].sprites.push(createSprite({x: 5, y: 2.75}, barrelTexture));
 
     const [canvas, ctx] = initCanvas('canvas10');
     const sky = createSky(canvas, ctx);
@@ -85,8 +86,8 @@ export async function initDemo10() {
         updateAnimations(animations, dt);
         renderBackground(canvas, ctx, sky);
         const cameraPlane = getCameraPlane(playerDir);
-        const zBuffer = renderEnv(canvas, ctx, aspectRatio, playerPos, playerDir, cameraPlane)
-        renderSprites(canvas, ctx, aspectRatio, sprites, zBuffer, playerPos, cameraPlane);
+        const [zBuffer, sprites] = renderEnv(canvas, ctx, aspectRatio, playerPos, playerDir, cameraPlane)
+        renderSprites(canvas, ctx, aspectRatio, sprites, zBuffer, cameraPlane);
     });
     attachInputs(canvas, aspectRatio, playerInputs, repaint, playerPos, playerDir, setPos, map, mapSize, animations);
 }
@@ -118,8 +119,9 @@ export function renderEnv(
     playerPos: Vec2,
     playerDir: Vec2,
     cameraPlane: Vec2,
-): number[] {
+): [number[], Sprite[]] {
     const zBuffer = Array(canvas.width);
+    const visibleCells = new Map<Cell, Vec2>();
     for (let x = 0; x < canvas.width; x++) {
         const ray = createRay(canvas, aspectRatio, playerPos, playerDir, x, cameraPlane);
         const stripe = ctx.getImageData(x, 0, 1, canvas.height);
@@ -131,6 +133,9 @@ export function renderEnv(
 
         let floorCell = getMapCell(map, ray.mapPos, mapSize)
         while (true) {
+            if (floorCell) {
+                visibleCells.set(floorCell, offsetPlayerPos);
+            }
             advanceRay(ray);
             let cell = getMapCell(map, ray.mapPos, mapSize)
             if (!cell) {
@@ -158,5 +163,14 @@ export function renderEnv(
         ctx.putImageData(stripe, x, 0);
         zBuffer[x] = ray.perpWallDist;
     }
-    return zBuffer;
+    const sprites: Sprite[] = [];
+    visibleCells.forEach((offsetPlayerPos, cell) => {
+        cell.sprites.forEach(sprite => {
+            sprite.relPos = sub2(sprite.pos, offsetPlayerPos);
+            sprite.relDist = sprite.relPos.x * sprite.relPos.x + sprite.relPos.y * sprite.relPos.y;
+            sprites.push(sprite);
+        });
+    });
+    sprites.sort((a, b) => b.relDist - a.relDist);
+    return [zBuffer, sprites];
 }

@@ -49,7 +49,6 @@ export function initCanvas(id: string): [HTMLCanvasElement, CanvasRenderingConte
     }
 
     const ctx = canvas.getContext('2d')!;
-    ctx.imageSmoothingEnabled = false;
 
     return [canvas, ctx];
 }

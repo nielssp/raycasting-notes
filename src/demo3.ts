@@ -85,7 +85,7 @@ export function renderWall(
 ) {
     const brightness = getBrightness(ray.perpWallDist, ray.side);
 
-    const texX = Math.floor(wall.wallX * textureSize.x);
+    const texX = (wall.wallX * textureSize.x) & (textureSize.x - 1);
     /*
     if (ray.side === 0 && ray.rayDir.x < 0) {
         texX = textureSize.x - texX - 1;
@@ -102,7 +102,7 @@ export function renderWall(
 
     for (let y = yStart; y < yEnd; y++) {
         const offset = y * 4;
-        const texY = Math.floor(texPos) % textureSize.y;
+        const texY = texPos & (textureSize.y - 1);
         texPos += step;
         if (wallTexture) {
             const texOffset = (texY * textureSize.x + texX) * 4;
