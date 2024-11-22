@@ -85,6 +85,7 @@ export function attachRenderFunction(
     function repaint() {
         if (!active) {
             active = true;
+            previousTime = +(document.timeline.currentTime ?? previousTime);
             requestAnimationFrame(update);
         }
     }
@@ -104,7 +105,8 @@ export function loadImage(src: string): Promise<HTMLImageElement> {
     let promise = imageCache.get(src);
     if (!promise) {
         const img = new Image();
-        img.src = src;
+        const basePath = document.getElementById('raycasting')?.getAttribute('data-basepath') ?? '';
+        img.src = basePath + src;
         promise = new Promise((resolve, reject) => {
             img.onload = () => {
                 resolve(img);

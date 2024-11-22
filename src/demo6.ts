@@ -17,9 +17,9 @@ export async function initDemo6() {
 
     const setPos = (dest: Vec2) => setPlayerPos(playerPos, dest, map, mapSize);
 
-    const wallTexture: ImageData = await loadTextureData('/assets/content/misc/textures/wall.png');
-    const floorTexture: ImageData = await loadTextureData('/assets/content/misc/textures/floor.png');
-    const ceilingTexture: ImageData = await loadTextureData('/assets/content/misc/textures/ceiling.png');
+    const wallTexture: ImageData = await loadTextureData('wall.png');
+    const floorTexture: ImageData = await loadTextureData('floor.png');
+    const ceilingTexture: ImageData = await loadTextureData('ceiling.png');
 
     const [canvas, ctx] = initCanvas('canvas6');
     const sky = createSky(canvas, ctx);

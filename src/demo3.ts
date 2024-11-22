@@ -17,7 +17,7 @@ export async function initDemo3() {
 
     const setPos = (dest: Vec2) => setPlayerPos(playerPos, dest, map, mapSize);
 
-    const wallTexture: ImageData = await loadTextureData('/assets/content/misc/textures/wall.png');
+    const wallTexture: ImageData = await loadTextureData('wall.png');
 
     const [canvas, ctx] = initCanvas('canvas3');
     const aspectRatio = canvas.width / canvas.height;

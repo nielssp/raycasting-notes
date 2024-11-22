@@ -144,11 +144,11 @@ export async function initDemo11() {
     const setPos = (dest: Vec2) => setPlayerPos(playerPos, dest, map, mapSize);
 
     const textures: Partial<Record<string, ImageData>> = Object.fromEntries(await Promise.all(Object.entries({
-        W: loadTextureData('/assets/content/misc/textures/wall.png'),
-        F: loadTextureData('/assets/content/misc/textures/floor.png'),
-        C: loadTextureData('/assets/content/misc/textures/ceiling.png'),
-        D: loadTextureData('/assets/content/misc/textures/door.png'),
-        d: loadTextureData('/assets/content/misc/textures/door-side.png'),
+        W: loadTextureData('wall.png'),
+        F: loadTextureData('floor.png'),
+        C: loadTextureData('ceiling.png'),
+        D: loadTextureData('door.png'),
+        d: loadTextureData('door-side.png'),
     }).map(async ([k, p]) => [k, await p])));
     applyMapTextures(map, textures);
 
@@ -163,7 +163,7 @@ export async function initDemo11() {
     const animations: ((dt: number) => boolean)[] = [];
 
     const sprites: Sprite[] = [];
-    const barrelTexture = await loadTextureData('/assets/content/misc/textures/barrel.png');
+    const barrelTexture = await loadTextureData('barrel.png');
     sprites.push(createSprite({x: 3, y: 4, z: 1}, barrelTexture));
     sprites.push(createSprite({x: 4, y: 3.75, z: 1}, barrelTexture));
     sprites.push(createSprite({x: 7.5, y: 9.5, z: 2}, barrelTexture));
@@ -395,6 +395,7 @@ export function attachJumpKey(
     });
     canvas.addEventListener('contextmenu', e => {
         e.preventDefault();
+        canvas.focus();
         const cell = map[Math.floor(playerPos.y)][Math.floor(playerPos.x)];
         if (cell && playerPos.z === cell.floorHeight) {
             playerVel.z = 3;

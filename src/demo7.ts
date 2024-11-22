@@ -88,11 +88,11 @@ export async function initDemo7() {
     const setPos = (dest: Vec2) => setPlayerPos(playerPos, dest, map, mapSize);
 
     const textures: Partial<Record<string, ImageData>> = Object.fromEntries(await Promise.all(Object.entries({
-        W: loadTextureData('/assets/content/misc/textures/wall.png'),
-        R: loadTextureData('/assets/content/misc/textures/wall-red.png'),
-        F: loadTextureData('/assets/content/misc/textures/floor.png'),
-        G: loadTextureData('/assets/content/misc/textures/floor-green.png'),
-        C: loadTextureData('/assets/content/misc/textures/ceiling.png'),
+        W: loadTextureData('wall.png'),
+        R: loadTextureData('wall-red.png'),
+        F: loadTextureData('floor.png'),
+        G: loadTextureData('floor-green.png'),
+        C: loadTextureData('ceiling.png'),
     }).map(async ([k, p]) => [k, await p])));
     applyMapTextures(map, textures);
 

@@ -29,11 +29,11 @@ export async function initDemo12() {
     const setPos = (dest: Vec2) => setPlayerPos(playerPos, dest, map, mapSize);
 
     const textures: Partial<Record<string, ImageData>> = Object.fromEntries(await Promise.all(Object.entries({
-        W: loadRotatedTextureData('/assets/content/misc/textures/wall.png'),
-        F: loadRotatedTextureData('/assets/content/misc/textures/floor.png'),
-        C: loadRotatedTextureData('/assets/content/misc/textures/ceiling.png'),
-        D: loadRotatedTextureData('/assets/content/misc/textures/door.png'),
-        d: loadRotatedTextureData('/assets/content/misc/textures/door-side.png'),
+        W: loadRotatedTextureData('wall.png'),
+        F: loadRotatedTextureData('floor.png'),
+        C: loadRotatedTextureData('ceiling.png'),
+        D: loadRotatedTextureData('door.png'),
+        d: loadRotatedTextureData('door-side.png'),
     }).map(async ([k, p]) => [k, await p])));
     applyMapTextures(map, textures);
 
@@ -48,7 +48,7 @@ export async function initDemo12() {
     const animations: ((dt: number) => boolean)[] = [];
 
     const sprites: Sprite[] = [];
-    const barrelTexture = await loadRotatedTextureData('/assets/content/misc/textures/barrel.png');
+    const barrelTexture = await loadRotatedTextureData('barrel.png');
     sprites.push(createSprite({x: 3, y: 4, z: 1}, barrelTexture));
     sprites.push(createSprite({x: 4, y: 3.75, z: 1}, barrelTexture));
     sprites.push(createSprite({x: 7.5, y: 9.5, z: 2}, barrelTexture));

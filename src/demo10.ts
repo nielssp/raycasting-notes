@@ -64,17 +64,17 @@ export async function initDemo10() {
     const setPos = (dest: Vec2) => setPlayerPos(playerPos, dest, map, mapSize);
 
     const textures: Partial<Record<string, ImageData>> = Object.fromEntries(await Promise.all(Object.entries({
-        W: loadTextureData('/assets/content/misc/textures/wall.png'),
-        F: loadTextureData('/assets/content/misc/textures/floor.png'),
-        C: loadTextureData('/assets/content/misc/textures/ceiling.png'),
-        D: loadTextureData('/assets/content/misc/textures/door.png'),
-        d: loadTextureData('/assets/content/misc/textures/door-side.png'),
+        W: loadTextureData('wall.png'),
+        F: loadTextureData('floor.png'),
+        C: loadTextureData('ceiling.png'),
+        D: loadTextureData('door.png'),
+        d: loadTextureData('door-side.png'),
     }).map(async ([k, p]) => [k, await p])));
     applyMapTextures(map, textures);
 
     const animations: ((dt: number) => boolean)[] = [];
 
-    const barrelTexture = await loadTextureData('/assets/content/misc/textures/barrel.png');
+    const barrelTexture = await loadTextureData('barrel.png');
     map[3][4].sprites.push(createSprite({x: 4, y: 3}, barrelTexture));
     map[2][5].sprites.push(createSprite({x: 5, y: 2.75}, barrelTexture));
 
