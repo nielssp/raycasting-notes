@@ -13,3 +13,12 @@ This is the source code for all the demos displayed in my [notes on ray casting]
 * demo10: Portals
 * demo11: Different floor and ceiling heights
 * demo12: Rotated rendering
+
+## Running locally
+
+```
+git clone https://github.com/nielssp/raycasting-notes
+cd raycasting-notes
+npm i
+npm run dev
+```
